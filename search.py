@@ -17,6 +17,7 @@ In search.py, you will implement generic search algorithms which are called by
 Pacman agents (in searchAgents.py).
 """
 
+from operator import attrgetter
 from util import *
 
 class SearchProblem:
@@ -73,32 +74,38 @@ def tinyMazeSearch(problem):
     return [s, s, w, s, w, w, s, w]
 
 
-class SearchNode(object):
-    __slots__ = "data", "prevNode", "prevDir", "g"
+class NodeGenerator(object):
+    __slots__ = ()
 
-    def __init__(self, data, prevNode=None, prevDir=None, cost=0):
-        self.data = data
-        self.prevNode = prevNode
-        self.prevDir = prevDir
-
-        self.g = prevNode.g + cost if prevNode else 0
+    def __call__(self, data, prev=None, prevDir=None)
+        return data, prev, prevDir
 
 
-class HeuristicSearchNode(SearchNode):
-    __slots__ = "f", "h"
+class CostNodeGenerator(NodeGenerator):
+    __slots__ = ()
 
-    def __init__(self, data, prevNode=None, prevDir=None, cost=0, h=0):
-        super(HeuristicSearchNode, self).__init__(data, prevNode, prevDir, cost)
+    def __call__(self, g, cost, data, prev=None, prevDir=None):
+        return super(CostNodeGenerator, self).__call__(data, prev, prevDir), \
+               g + cost
 
-        self.g = prevNode.g + cost if prevNode else 0
-        self.f = self.g + h
-        self.h = h
+
+class HeuristicNodeGenerator(CostNodeGenerator):
+    __slots__ = "heuristic"
+
+    def __init__(self, heuristic):
+        self.heuristic = heuristic
+
+    def __call__(self, g, cost, data, prev=None, prevDir=None):
+        node, g = super(HeuristicNodeGenerator, self).__call__(
+            g, cost, data, prev, prevDir
+        )
+        return node, g, self.heuristic()
 
 
 def simpleSearch(problem, Container):
     container = Container()
     container.push(SearchNode(problem.getStartState()))
-    visited = set()
+    visited = {}
     goal = False
 
     while not container.isEmpty():
@@ -110,7 +117,7 @@ def simpleSearch(problem, Container):
         if n.data in visited:
             continue
         # add to close set
-        visited.add(n.data)
+        visited[n.data] = n
 
         succs = problem.getSuccessors(n.data)
         # expand unvisited child nodes
@@ -136,8 +143,45 @@ def breadthFirstSearch(problem):
     return simpleSearch(problem, Queue)
 
 
+def prioritySearch(problem, Node, prioritise):
+    q = PriorityQueue()
+    n = Node(problem.getStartState())
+    q.push(n, prioritise(n))
+    visited = {}
+    goal = False
+
+    while not q.isEmpty():
+        n = q.pop()
+        # test if goal achieve
+        if problem.isGoalState(n.data):
+            goal = True
+            break
+        if n.data in visited:
+            continue
+        # add to close set
+        visited[n.data] = n
+
+        succs = problem.getSuccessors(n.data)
+        # expand unvisited child nodes
+        for succ, d, cost in succs:
+            if succ in visited:
+                succ = visited[succ]
+            else:
+                n = Node(succ, n, d, cost)
+                q.push(n, prioritise(n))
+
+    path = []
+    if goal:
+        while n.prevNode:
+            path.append(n.prevDir)
+            n = n.prevNode
+        path.reverse()
+
+    return path
+
+
 def uniformCostSearch(problem):
-    return simpleSearch(problem)
+    return prioritySearch(problem, NodeGenerator(), attrgetter("g"))
 
 
 def nullHeuristic(state, problem=None):
