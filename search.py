@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -17,7 +17,7 @@ In search.py, you will implement generic search algorithms which are called by
 Pacman agents (in searchAgents.py).
 """
 
-import util
+from util import *
 
 class SearchProblem:
     """
@@ -31,7 +31,7 @@ class SearchProblem:
         """
         Returns the start state for the search problem.
         """
-        util.raiseNotDefined()
+        raiseNotDefined()
 
     def isGoalState(self, state):
         """
@@ -39,7 +39,7 @@ class SearchProblem:
 
         Returns True if and only if the state is a valid goal state.
         """
-        util.raiseNotDefined()
+        raiseNotDefined()
 
     def getSuccessors(self, state):
         """
@@ -50,7 +50,7 @@ class SearchProblem:
         state, 'action' is the action required to get there, and 'stepCost' is
         the incremental cost of expanding to that successor.
         """
-        util.raiseNotDefined()
+        raiseNotDefined()
 
     def getCostOfActions(self, actions):
         """
@@ -59,7 +59,7 @@ class SearchProblem:
         This method returns the total cost of a particular sequence of actions.
         The sequence must be composed of legal moves.
         """
-        util.raiseNotDefined()
+        raiseNotDefined()
 
 
 def tinyMazeSearch(problem):
@@ -70,34 +70,75 @@ def tinyMazeSearch(problem):
     from game import Directions
     s = Directions.SOUTH
     w = Directions.WEST
-    return  [s, s, w, s, w, w, s, w]
+    return [s, s, w, s, w, w, s, w]
+
+
+class SearchNode(object):
+    __slots__ = "data", "prevNode", "prevDir", "g"
+
+    def __init__(self, data, prevNode=None, prevDir=None, cost=0):
+        self.data = data
+        self.prevNode = prevNode
+        self.prevDir = prevDir
+
+        self.g = prevNode.g + cost if prevNode else 0
+
+
+class HeuristicSearchNode(SearchNode):
+    __slots__ = "f", "h"
+
+    def __init__(self, data, prevNode=None, prevDir=None, cost=0, h=0):
+        super(HeuristicSearchNode, self).__init__(data, prevNode, prevDir, cost)
+
+        self.g = prevNode.g + cost if prevNode else 0
+        self.f = self.g + h
+        self.h = h
+
+
+def simpleSearch(problem, Container):
+    container = Container()
+    container.push(SearchNode(problem.getStartState()))
+    visited = set()
+    goal = False
+
+    while not container.isEmpty():
+        n = container.pop()
+        # test if goal achieve
+        if problem.isGoalState(n.data):
+            goal = True
+            break
+        if n.data in visited:
+            continue
+        # add to close set
+        visited.add(n.data)
+
+        succs = problem.getSuccessors(n.data)
+        # expand unvisited child nodes
+        for succ, d, cost in succs:
+            if succ not in visited:
+                container.push(SearchNode(succ, n, d, cost))
+
+    path = []
+    if goal:
+        while n.prevNode:
+            path.append(n.prevDir)
+            n = n.prevNode
+        path.reverse()
+
+    return path
+
 
 def depthFirstSearch(problem):
-    """
-    Search the deepest nodes in the search tree first.
+    return simpleSearch(problem, Stack)
 
-    Your search algorithm needs to return a list of actions that reaches the
-    goal. Make sure to implement a graph search algorithm.
-
-    To get started, you might want to try some of these simple commands to
-    understand the search problem that is being passed in:
-
-    print "Start:", problem.getStartState()
-    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
-    print "Start's successors:", problem.getSuccessors(problem.getStartState())
-    """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
 
 def breadthFirstSearch(problem):
-    """Search the shallowest nodes in the search tree first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return simpleSearch(problem, Queue)
+
 
 def uniformCostSearch(problem):
-    """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return simpleSearch(problem)
+
 
 def nullHeuristic(state, problem=None):
     """
@@ -109,7 +150,7 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    raiseNotDefined()
 
 
 # Abbreviations
