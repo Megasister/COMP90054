@@ -17,8 +17,7 @@ In search.py, you will implement generic search algorithms which are called by
 Pacman agents (in searchAgents.py).
 """
 
-from operator import attrgetter
-from util import *
+import util
 
 class SearchProblem:
     """
@@ -32,7 +31,7 @@ class SearchProblem:
         """
         Returns the start state for the search problem.
         """
-        raiseNotDefined()
+        util.raiseNotDefined()
 
     def isGoalState(self, state):
         """
@@ -40,7 +39,7 @@ class SearchProblem:
 
         Returns True if and only if the state is a valid goal state.
         """
-        raiseNotDefined()
+        util.raiseNotDefined()
 
     def getSuccessors(self, state):
         """
@@ -51,7 +50,7 @@ class SearchProblem:
         state, 'action' is the action required to get there, and 'stepCost' is
         the incremental cost of expanding to that successor.
         """
-        raiseNotDefined()
+        util.raiseNotDefined()
 
     def getCostOfActions(self, actions):
         """
@@ -60,7 +59,7 @@ class SearchProblem:
         This method returns the total cost of a particular sequence of actions.
         The sequence must be composed of legal moves.
         """
-        raiseNotDefined()
+        util.raiseNotDefined()
 
 
 def tinyMazeSearch(problem):
@@ -74,114 +73,92 @@ def tinyMazeSearch(problem):
     return [s, s, w, s, w, w, s, w]
 
 
-class NodeGenerator(object):
-    __slots__ = ()
-
-    def __call__(self, data, prev=None, prevDir=None)
-        return data, prev, prevDir
-
-
-class CostNodeGenerator(NodeGenerator):
-    __slots__ = ()
-
-    def __call__(self, g, cost, data, prev=None, prevDir=None):
-        return super(CostNodeGenerator, self).__call__(data, prev, prevDir), \
-               g + cost
-
-
-class HeuristicNodeGenerator(CostNodeGenerator):
-    __slots__ = "heuristic"
-
-    def __init__(self, heuristic):
-        self.heuristic = heuristic
-
-    def __call__(self, g, cost, data, prev=None, prevDir=None):
-        node, g = super(HeuristicNodeGenerator, self).__call__(
-            g, cost, data, prev, prevDir
-        )
-        return node, g, self.heuristic()
-
-
 def simpleSearch(problem, Container):
     container = Container()
-    container.push(SearchNode(problem.getStartState()))
+    container.push((problem.getStartState(), None, None))
     visited = {}
     goal = False
 
     while not container.isEmpty():
         n = container.pop()
         # test if goal achieve
-        if problem.isGoalState(n.data):
+        if problem.isGoalState(n[0]):
             goal = True
             break
-        if n.data in visited:
+        if n[0] in visited:
             continue
         # add to close set
-        visited[n.data] = n
+        visited[n[0]] = n
 
-        succs = problem.getSuccessors(n.data)
+        succs = problem.getSuccessors(n[0])
         # expand unvisited child nodes
-        for succ, d, cost in succs:
+        for succ, d, _ in succs:
             if succ not in visited:
-                container.push(SearchNode(succ, n, d, cost))
+                container.push((succ, n[0], d))
 
     path = []
     if goal:
-        while n.prevNode:
-            path.append(n.prevDir)
-            n = n.prevNode
+        while n[1]:
+            path.append(n[2])
+            n = visited[n[1]]
         path.reverse()
 
     return path
 
 
 def depthFirstSearch(problem):
-    return simpleSearch(problem, Stack)
+    """
+    Search the deepest nodes in the search tree first.
+
+    Your search algorithm needs to return a list of actions that reaches the
+    goal. Make sure to implement a graph search algorithm.
+
+    To get started, you might want to try some of these simple commands to
+    understand the search problem that is being passed in:
+
+    print "Start:", problem.getStartState()
+    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
+    print "Start's successors:", problem.getSuccessors(problem.getStartState())
+    """
+    return simpleSearch(problem, util.Stack)
 
 
 def breadthFirstSearch(problem):
-    return simpleSearch(problem, Queue)
+    """Search the shallowest nodes in the search tree first."""
+    return simpleSearch(problem, util.Queue)
 
 
-def prioritySearch(problem, Node, prioritise):
-    q = PriorityQueue()
-    n = Node(problem.getStartState())
-    q.push(n, prioritise(n))
-    visited = {}
+def uniformCostSearch(problem):
+    """Search the node of least total cost first."""
+    q = util.PriorityQueue()
+    n = problem.getStartState()
+    q.push(n, 0)
+    visited = {n: (None, None, 0)}
     goal = False
 
     while not q.isEmpty():
         n = q.pop()
-        # test if goal achieve
-        if problem.isGoalState(n.data):
+        if problem.isGoalState(n):
             goal = True
             break
-        if n.data in visited:
-            continue
-        # add to close set
-        visited[n.data] = n
 
-        succs = problem.getSuccessors(n.data)
-        # expand unvisited child nodes
-        for succ, d, cost in succs:
-            if succ in visited:
-                succ = visited[succ]
-            else:
-                n = Node(succ, n, d, cost)
-                q.push(n, prioritise(n))
+        for succ, d, cost in problem.getSuccessors(n):
+            dist = visited[n][2] + cost
+            # expand the node if it is not visited yet or it has a lower
+            # distance from the original node
+            if succ not in visited or dist < visited[succ][2]:
+                q.push(succ, dist)
+                visited[succ] = (n, d, dist)
 
     path = []
     if goal:
-        while n.prevNode:
-            path.append(n.prevDir)
-            n = n.prevNode
-        path.reverse()
+        n, d, _ = visited[n]
+        while d is not None:
+            path.append(d)
+            n, d, _ = visited[n]
+    path.reverse()
 
     return path
-
-
-def uniformCostSearch(problem):
-    return prioritySearch(problem, NodeGenerator(), attrgetter("g"))
 
 
 def nullHeuristic(state, problem=None):
@@ -191,10 +168,41 @@ def nullHeuristic(state, problem=None):
     """
     return 0
 
+
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    raiseNotDefined()
+    q = util.PriorityQueue()
+    n = problem.getStartState()
+    q.push(n, 0)
+    h = heuristic(n, problem)
+    visited = {n: (None, None, (h, 0, h))}
+    goal = False
+
+    while not q.isEmpty():
+        n = q.pop()
+        if problem.isGoalState(n):
+            goal = True
+            break
+
+        for succ, d, cost in problem.getSuccessors(n):
+            dist = visited[n][2][1] + cost
+            # expand the node if it is not visited yet or it has a lower
+            # distance from the original node
+            if succ not in visited or dist < visited[succ][2][1]:
+                h = heuristic(succ, problem)
+                f = dist + h
+                q.push(succ, (f, h))
+                visited[succ] = (n, d, (f, dist, h))
+
+    path = []
+    if goal:
+        n, d, _ = visited[n]
+        while d is not None:
+            path.append(d)
+            n, d, _ = visited[n]
+    path.reverse()
+
+    return path
 
 
 # Abbreviations
