@@ -473,7 +473,23 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access
     problem.heuristicInfo['wallCount']
     """
-    return 0
+    n, fg = state
+    foods = fg.asList()
+    if not foods:
+        return 0
+    # nearly similar to mazeDistance as below but utilise the search.astar
+    # instead of the search.bfs which reduce the search time
+    # this returns the maximum distance from the original position to each of
+    # the positions which has a food. This is admissible since it needs to
+    # travel at least this amount of distance to reach the furthest food from
+    # current location
+    return max(len(search.astar(
+        PositionSearchProblem(
+            problem.startingGameState, start=n, goal=f, warn=False,
+            visualize=False
+        ),
+        manhattanHeuristic
+    )) for f in foods)
 
 
 class ClosestDotSearchAgent(SearchAgent):
@@ -498,7 +514,8 @@ class ClosestDotSearchAgent(SearchAgent):
         Returns a path (a list of actions) to the closest dot, starting from
         gameState.
         """
-        pass
+        # utilise search.bfs
+        return search.bfs(AnyFoodSearchProblem(gameState))
 
 
 class AnyFoodSearchProblem(PositionSearchProblem):
@@ -532,7 +549,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         The state is Pacman's position. Fill this in with a goal test that will
         complete the problem definition.
         """
-        return self.food.count() == 0
+        return state in self.food.asList()
 
 def mazeDistance(point1, point2, gameState):
     """
