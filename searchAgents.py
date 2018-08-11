@@ -311,9 +311,11 @@ class CornersProblem(search.SearchProblem):
         """
         pos, foods = state
         successors = []
-        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+        for action in (
+            Directions.NORTH, Directions.SOUTH, Directions.EAST,
+            Directions.WEST
+        ):
             # Add a successor state to the successor list if the action is legal
-            # Here's a code snippet for figuring out whether a new position hits a wall:
             x, y = pos
             dx, dy = Actions.directionToVector(action)
             nx, ny = npos = int(x + dx), int(y + dy)
@@ -474,22 +476,53 @@ def foodHeuristic(state, problem):
     problem.heuristicInfo['wallCount']
     """
     n, fg = state
-    foods = fg.asList()
-    if not foods:
+    fg = fg.asList()
+    if not fg:
         return 0
-    # nearly similar to mazeDistance as below but utilise the search.astar
-    # instead of the search.bfs which reduce the search time
-    # this returns the maximum distance from the original position to each of
-    # the positions which has a food. This is admissible since it needs to
-    # travel at least this amount of distance to reach the furthest food from
-    # current location
-    return max(len(search.astar(
-        PositionSearchProblem(
-            problem.startingGameState, start=n, goal=f, warn=False,
-            visualize=False
-        ),
-        manhattanHeuristic
-    )) for f in foods)
+
+    foods = set(fg)
+    # if n in problem.heuristicInfo:
+    #     # remove if any foods have shortest path info
+    #     foods -= set(problem.heuristicInfo[n].keys())
+
+    # if any foods still need to be explored
+    # if foods:
+    # similar to uniform cost search, could use Floyd-Warshall instead
+    # but it might take longer time to run and we may not need to expand
+    # all positions
+    q = util.PriorityQueue()
+    q.push((n, 0), 0)
+    visited = {n: (None, 0)}
+    while not q.isEmpty():
+        # goal state, all foods have been reached
+        if not foods:
+            break
+
+        pos, w = q.pop()
+        for action in (Directions.NORTH, Directions.SOUTH, Directions.EAST,
+                       Directions.WEST):
+            x, y = pos
+            dx, dy = Actions.directionToVector(action)
+            nx, ny = npos = int(x + dx), int(y + dy)
+            if problem.walls[nx][ny]:
+                continue
+
+            # remove visited food position
+            if npos in foods:
+                foods.remove(npos)
+            ng = w + 1
+            if npos in visited:
+                l, g = visited[npos]
+                if ng < g:
+                    visited[npos] = [pos], ng
+                    q.push((npos, ng), ng)
+                elif ng == g:
+                    l.append(pos)
+            else:
+                visited[npos] = [pos], ng
+                q.push((npos, ng), ng)
+
+    return max(visited[f][1] for f in fg)
 
 
 class ClosestDotSearchAgent(SearchAgent):
