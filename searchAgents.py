@@ -475,45 +475,57 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access
     problem.heuristicInfo['wallCount']
     """
-    n, fg = state
+    org, fg = state
     fg = fg.asList()
     if not fg:
         return 0
 
-    foods = set(fg)
-    # similar to uniform cost search but it will not stop until all foods are
-    # reached
-    q = util.PriorityQueue()
-    q.push((n, 0), 0)
-    visited = {n: 0}
-    while not q.isEmpty():
-        # goal state, all foods have been reached
-        if not foods:
-            break
+    hi = problem.heuristicInfo
+    if not hi:
+        foods = set(fg)
+        # run Uniform Cost Search from each of the food, since this is a
+        # undirected graph, if P is an optimal path from v1 to v2, then the
+        # reverse of P is an optimal path from v2 to v1
+        for n in fg:
+            q = util.PriorityQueue()
+            q.push((n, 0), 0)
+            visited = {n: 0}
+            # stop if no further updates need to be performed
+            while not q.isEmpty():
+                pos, w = q.pop()
+                for action in (
+                    Directions.NORTH, Directions.SOUTH, Directions.EAST,
+                    Directions.WEST
+                ):
+                    x, y = pos
+                    dx, dy = Actions.directionToVector(action)
+                    nx, ny = npos = int(x + dx), int(y + dy)
+                    if problem.walls[nx][ny]:
+                        continue
 
-        pos, w = q.pop()
-        for action in (Directions.NORTH, Directions.SOUTH, Directions.EAST,
-                       Directions.WEST):
-            x, y = pos
-            dx, dy = Actions.directionToVector(action)
-            nx, ny = npos = int(x + dx), int(y + dy)
-            if problem.walls[nx][ny]:
-                continue
+                    # remove visited food position
+                    ng = w + 1
+                    if npos in visited:
+                        if ng < visited[npos]:
+                            visited[npos] = ng
+                            q.push((npos, ng), ng)
+                    else:
+                        visited[npos] = ng
+                        q.push((npos, ng), ng)
 
-            # remove visited food position
-            if npos in foods:
-                foods.remove(npos)
-            ng = w + 1
-            if npos in visited:
-                g = visited[npos]
-                if ng < g:
-                    visited[npos] = ng
-                    q.push((npos, ng), ng)
-            else:
-                visited[npos] = ng
-                q.push((npos, ng), ng)
+            for d, w in visited.items():
+                if n in hi:
+                    if d not in hi[n]:
+                        hi[n][d] = w
+                else:
+                    hi[n] = {d: w}
+                if d in hi:
+                    if n not in hi[d]:
+                        hi[d][n] = w
+                else:
+                    hi[d] = {n: w}
 
-    return max(visited[f] for f in fg)
+    return max(hi[org][f] for f in fg)
 
 
 class ClosestDotSearchAgent(SearchAgent):
