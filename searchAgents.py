@@ -485,7 +485,7 @@ def foodHeuristic(state, problem):
     # reached
     q = util.PriorityQueue()
     q.push((n, 0), 0)
-    visited = {n: (None, 0)}
+    visited = {n: 0}
     while not q.isEmpty():
         # goal state, all foods have been reached
         if not foods:
@@ -505,17 +505,15 @@ def foodHeuristic(state, problem):
                 foods.remove(npos)
             ng = w + 1
             if npos in visited:
-                l, g = visited[npos]
+                g = visited[npos]
                 if ng < g:
-                    visited[npos] = [pos], ng
+                    visited[npos] = ng
                     q.push((npos, ng), ng)
-                elif ng == g:
-                    l.append(pos)
             else:
-                visited[npos] = [pos], ng
+                visited[npos] = ng
                 q.push((npos, ng), ng)
 
-    return max(visited[f][1] for f in fg)
+    return max(visited[f] for f in fg)
 
 
 class ClosestDotSearchAgent(SearchAgent):
