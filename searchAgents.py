@@ -481,15 +481,8 @@ def foodHeuristic(state, problem):
         return 0
 
     foods = set(fg)
-    # if n in problem.heuristicInfo:
-    #     # remove if any foods have shortest path info
-    #     foods -= set(problem.heuristicInfo[n].keys())
-
-    # if any foods still need to be explored
-    # if foods:
-    # similar to uniform cost search, could use Floyd-Warshall instead
-    # but it might take longer time to run and we may not need to expand
-    # all positions
+    # similar to uniform cost search but it will not stop until all foods are
+    # reached
     q = util.PriorityQueue()
     q.push((n, 0), 0)
     visited = {n: (None, 0)}
