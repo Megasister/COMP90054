@@ -12,41 +12,94 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+from abc import ABCMeta, abstractmethod
 from captureAgents import CaptureAgent
-import random, time, util, capture
 from game import Directions
+from operator import itemgetter
 from util import nearestPoint
-import game
+import random
+import time
+import util
 
 
 #################
 # Team creation #
 #################
-
-def createTeam(firstIndex, secondIndex, isRed,
-               first='offensiveAgent', second='atLeastDefensiveAgent'):
-    """
-  This function should return a list of two agents that will form the
-  team, initialized using firstIndex and secondIndex as their agent
-  index numbers.  isRed is True if the red team is being created, and
-  will be False if the blue team is being created.
-
-  As a potentially helpful development aid, this function can take
-  additional string-valued keyword arguments ("first" and "second" are
-  such arguments in the case of this function), which will come from
-  the --redOpts and --blueOpts command-line arguments to capture.py.
-  For the nightly contest, however, your team will be created without
-  any extra arguments, so you should make sure that the default
-  behavior is what you want for the nightly contest.
-  """
-
-    # The following line is an example only; feel free to change it.
+def createTeam(
+    firstIndex,
+    secondIndex,
+    isRed,
+    first='offensiveAgent',
+    second='atLeastDefensiveAgent'
+):
     return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
 
 ##########
 # Agents #
 ##########
+# force new style Python 2 class by multiple inheritance
+class FeatureWeightAgent(object, CaptureAgent):
+    """
+    This is an abstract class generalising all agents make decision based on
+    evaluation on handcrafted features and weights
+    """
+    __metaclass__ = ABCMeta
+    # prohibit creation of __dict__ for fast access
+    __slots__ = ()
+
+    def evaluate(self, gameState, action):
+        successor = self.getSuccessor(gameState, action)
+        # return dot product of feature vector and weight vector
+        return sum(f * w for f, w in zip(
+            self.getFeatures(successor), self.getWeights(successor)
+        ))
+
+    def chooseAction(self, gameState):
+        # greedy strategy
+        return max((
+            (a, self.evaluate(gameState, a))
+            for a in gameState.getLegalActions(self.index)
+        ), itemgetter(1))[0]
+
+    def getSuccessor(self, gameState, action):
+        successor = gameState.generateSuccessor(self.index, action)
+        pos = successor.getAgentState(self.index).getPosition()
+        return successor if pos == nearestPoint(pos) \
+            else successor.generateSuccessor(self.index, action)
+
+    @abstractmethod
+    def getFeatures(self, gameState):
+        """
+        an iterable (preferably a list) of features to be used in evaluation
+        """
+        pass
+
+    @abstractmethod
+    def getWeights(self, gameState):
+        """
+        an iterable (preferably a list) of weights which needs to have same
+        number of items as the features return by getFeatures
+        """
+        pass
+
+
+class GreedyAgent(FeatureWeightAgent):
+    __slots__ = ()
+
+    def getFeatures(self, gameState):
+        pass
+
+    def getWeights(self, gameState):
+        pass
+
+
+class AdversialAgent(GreedyAgent):
+    __slots__ = ()
+
+    def chooseAction(self, gameState):
+        pass
+
 
 class offensiveAgent(CaptureAgent):
     def registerInitialState(self, gameState):
