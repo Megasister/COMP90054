@@ -39,14 +39,20 @@ def createTeam(
 # Agents #
 ##########
 # force new style Python 2 class by multiple inheritance
-class FeatureWeightAgent(object, CaptureAgent):
+class FeatureWeightAgent(CaptureAgent, object):
     """
     This is an abstract class generalising all agents make decision based on
     evaluation on handcrafted features and weights
     """
     __metaclass__ = ABCMeta
     # prohibit creation of __dict__ for fast access
-    __slots__ = ()
+    __slots__ = "baseWeights"
+
+    def __init__(self, index, numWeights, timeForComputing=.1):
+        super(CaptureAgent, self).__init__(index, timeForComputing)
+        super(object, self).__init__()
+
+        self.baseWeights = [1] * numWeights
 
     def evaluate(self, gameState, action):
         successor = self.getSuccessor(gameState, action)
@@ -55,37 +61,54 @@ class FeatureWeightAgent(object, CaptureAgent):
             self.getFeatures(successor), self.getWeights(successor)
         ))
 
+    @abstractmethod
     def chooseAction(self, gameState):
-        # greedy strategy
-        return max((
-            (a, self.evaluate(gameState, a))
-            for a in gameState.getLegalActions(self.index)
-        ), itemgetter(1))[0]
+        """
+        Choose the action leads to best successor state from current
+        game state
+        """
+        pass
 
     def getSuccessor(self, gameState, action):
+        """
+        Obtain successor state from current state
+        """
         successor = gameState.generateSuccessor(self.index, action)
         pos = successor.getAgentState(self.index).getPosition()
+        # avoid half grid position cover
         return successor if pos == nearestPoint(pos) \
             else successor.generateSuccessor(self.index, action)
 
     @abstractmethod
     def getFeatures(self, gameState):
         """
-        an iterable (preferably a list) of features to be used in evaluation
+        Return an iterable (preferably a list) of features to be used in
+        evaluation computation
         """
         pass
 
     @abstractmethod
     def getWeights(self, gameState):
         """
-        an iterable (preferably a list) of weights which needs to have same
-        number of items as the features return by getFeatures
+        Return an iterable (preferably a list) of weights which needs to have
+        same number of items as the features return by getFeatures
         """
         pass
 
 
 class GreedyAgent(FeatureWeightAgent):
     __slots__ = ()
+
+    def chooseAction(self, gameState):
+        """
+        Greedily choose the action leads to best successor state from current
+        game state
+        """
+        # greedy strategy
+        return max((
+            (a, self.evaluate(gameState, a))
+            for a in gameState.getLegalActions(self.index)
+        ), itemgetter(1))[0]
 
     def getFeatures(self, gameState):
         pass
@@ -95,6 +118,10 @@ class GreedyAgent(FeatureWeightAgent):
 
 
 class AdversialAgent(GreedyAgent):
+    """
+    An agent with adversial strategy (Expecti Minimax), which is essentially an
+    agent using heuristic strategy
+    """
     __slots__ = ()
 
     def chooseAction(self, gameState):
