@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ac82a224-8231-45f0-8131-7b396b092dc0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pacman-contest/myTeam.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/myTeam.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -19,7 +18,7 @@
     <session id="71168356">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="2" />
+          <entry key="project.closed" value="3" />
           <entry key="project.open.time.5" value="1" />
           <entry key="project.open.time.7" value="1" />
           <entry key="project.open.time.9" value="1" />
@@ -42,13 +41,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="55" />
-          <entry key="py" value="5855" />
+          <entry key="py" value="6167" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="55" />
-          <entry key="Python" value="5855" />
+          <entry key="Python" value="6167" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.js.language.service.starts" />
@@ -71,8 +70,8 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/baselineTeam.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="448">
-                  <caret line="166" lean-forward="true" selection-start-line="166" selection-end-line="166" />
+                <state relative-caret-position="464">
+                  <caret line="167" column="58" lean-forward="true" selection-start-line="167" selection-start-column="58" selection-end-line="167" selection-end-column="58" />
                 </state>
               </provider>
             </entry>
@@ -120,15 +119,16 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="400">
-                  <caret line="292" column="26" lean-forward="true" selection-start-line="292" selection-start-column="26" selection-end-line="292" selection-end-column="26" />
+                <state relative-caret-position="654">
+                  <caret line="312" lean-forward="true" selection-start-line="312" selection-end-line="312" />
                   <folding>
-                    <marker date="1538139720389" expanded="true" signature="1963:1969" ph="..." />
-                    <marker date="1538139720389" expanded="true" signature="3066:3069" ph="..." />
-                    <marker date="1538139720389" expanded="true" signature="3066:3249" ph="..." />
-                    <marker date="1538139720389" expanded="true" signature="3627:3633" ph="..." />
-                    <marker date="1538139720389" expanded="true" signature="3790:4179" ph="..." />
-                    <marker date="1538139720389" expanded="true" signature="9011:9014" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="1973:1979" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="2855:2953" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="3355:3358" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="3355:3538" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="3916:3922" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="4079:4468" ph="..." />
+                    <marker date="1538140509625" expanded="true" signature="9351:9363" ph="..." />
                   </folding>
                 </state>
               </provider>
@@ -334,7 +334,7 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32900432" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32900432" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32900432" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -434,22 +434,23 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/baselineTeam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="448">
-          <caret line="166" lean-forward="true" selection-start-line="166" selection-end-line="166" />
+        <state relative-caret-position="464">
+          <caret line="167" column="58" lean-forward="true" selection-start-line="167" selection-start-column="58" selection-end-line="167" selection-end-column="58" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="400">
-          <caret line="292" column="26" lean-forward="true" selection-start-line="292" selection-start-column="26" selection-end-line="292" selection-end-column="26" />
+        <state relative-caret-position="654">
+          <caret line="312" lean-forward="true" selection-start-line="312" selection-end-line="312" />
           <folding>
-            <marker date="1538139720389" expanded="true" signature="1963:1969" ph="..." />
-            <marker date="1538139720389" expanded="true" signature="3066:3069" ph="..." />
-            <marker date="1538139720389" expanded="true" signature="3066:3249" ph="..." />
-            <marker date="1538139720389" expanded="true" signature="3627:3633" ph="..." />
-            <marker date="1538139720389" expanded="true" signature="3790:4179" ph="..." />
-            <marker date="1538139720389" expanded="true" signature="9011:9014" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="1973:1979" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="2855:2953" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="3355:3358" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="3355:3538" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="3916:3922" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="4079:4468" ph="..." />
+            <marker date="1538140509625" expanded="true" signature="9351:9363" ph="..." />
           </folding>
         </state>
       </provider>

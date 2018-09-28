@@ -45,7 +45,7 @@ def createTeam(
 ##########
 
 ################################################################################
-# Abstract Agents
+# Abstract Classes / Mixins
 ################################################################################
 # force new style Python 2 class by multiple inheritance
 class GreedyAgent(CaptureAgent, object):
@@ -84,6 +84,21 @@ class GreedyAgent(CaptureAgent, object):
         maxVal = max(map(itemgetter(1), combs))
         # randomly break ties if exist
         return random.choice([a for a, v in combs if v == maxVal])
+
+
+class ExpectiMin(object):
+    """
+    A mixin implement the Expecti Min adversarial search and assuming the class
+    have a self.evaluate method
+    """
+    __metaclass__ = ABCMeta
+    __slots__ = ()
+
+    def expectMin(self):
+        pass
+
+    def evalMax(self):
+        pass
 
 
 class WeightTrainableAgent(object):
@@ -294,6 +309,10 @@ class DefensiveGreedyAgent(GreedyAgent):
         ########################################################################
         features[3] = action == Directions.STOP
         return sum(f * w for f, w in zip(features, self._weights))
+
+
+class ExpectiMinAgent(CaptureAgent, ExpectiMin):
+    pass
 
 
 class offensiveAgent(CaptureAgent):
