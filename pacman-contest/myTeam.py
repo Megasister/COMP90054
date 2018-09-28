@@ -12,7 +12,9 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+from __future__ import division, print_function
 from abc import ABCMeta, abstractmethod
+from baselineTeam import DefensiveReflexAgent
 from captureAgents import CaptureAgent
 from distanceCalculator import Distancer
 from game import Directions
@@ -22,52 +24,51 @@ import random
 import time
 import util
 
+infinity = float("inf")
+
 
 #################
 # Team creation #
 #################
-def createTeam(firstIndex, secondIndex, isRed, first='offensiveAgent',
-               second='atLeastDefensiveAgent'):
+def createTeam(
+    firstIndex,
+    secondIndex,
+    isRed,
+    first='OffensiveGreedyAgent',
+    second='DefensiveReflexAgent'
+):
     return [eval(first)(firstIndex, isRed), eval(second)(secondIndex, isRed)]
 
 
 ##########
 # Agents #
 ##########
+
+################################################################################
+# Abstract Agents
+################################################################################
 # force new style Python 2 class by multiple inheritance
-class FeatureWeightAgent(CaptureAgent, object):
+class HeuristicAgent(CaptureAgent, object):
     """
     This is an abstract class generalising all agents make decision based on
-    evaluation on handcrafted features and weights
+    evaluation as a dot product of features and weights
     """
     __metaclass__ = ABCMeta
-    # prohibit creation of __dict__ for fast access
-    __slots__ = "_baseWeights"
+    __slots__ = ()
 
-    def __init__(self, index, red, numWeights, timeForComputing=.1):
-        super(CaptureAgent, self).__init__(index, timeForComputing)
-        super(object, self).__init__()
+    def __init__(self, index, red, timeForComputing=.1):
+        CaptureAgent.__init__(self, index, timeForComputing)
+        object.__init__(self)
 
-        self._baseWeights = [1] * numWeights
         self.red = red
 
-    def registerInitialState(self, gameState):
-        """
-        Handles the initial setup of the agent
-        """
-        self.distancer = Distancer(gameState.data.layout)
-        self.distancer.getMazeDistances()
-
+    @abstractmethod
     def evaluate(self, gameState, action):
         """
         Evaluate and compute a score with a given action and game state by
         generating features
         """
-        successor = gameState.generateSuccessor(self.index, action)
-        # return dot product of feature vector and weight vector
-        return sum(f * w  for f, w in zip(
-            self.getFeatures(successor), self.getWeights(successor)
-        ))
+        pass
 
     @abstractmethod
     def chooseAction(self, gameState):
@@ -77,96 +78,160 @@ class FeatureWeightAgent(CaptureAgent, object):
         """
         pass
 
+
+class WeightTrainableAgent(object):
+    """
+    This is an abstract class generalising all agents make decision based on
+    evaluation and it is trainable (specifically w.r.t weights)
+    """
+    __metaclass__ = ABCMeta
+    __slots__ = ()
+
     @abstractmethod
-    def getFeatures(self, successor):
-        """
-        Return an iterable (preferably a list) of features to be used in
-        evaluation computation
-        """
+    def train(self):
         pass
 
-    def getWeights(self, successor):
-        """
-        Return an iterable (preferably a list) of weights which needs to have
-        same number of items as the features return by getFeatures
-        """
-        return self._baseWeights
+    @abstractmethod
+    def load(self):
+        pass
+
+    @abstractmethod
+    def save(self):
+        pass
 
 
-class GreedyAgent(FeatureWeightAgent):
+################################################################################
+# Concrete Agents
+################################################################################
+class OffensiveGreedyAgent(HeuristicAgent):
     """
     An agent greedily choose the maximum score of next step only
     """
-    __slots__ = ()
+    __slots__ = "_weights"
 
-    _num_features = 5
+    _num_features = 14
 
-    def chooseAction(self, successor):
+    def __init__(self, index, red, timeForComputing=.1):
+        HeuristicAgent.__init__(self, index, timeForComputing)
+        object.__init__(self)
+
+        self._weights = None
+
+    def registerInitialState(self, gameState):
+        """
+        Initialise the agent with the given state and initialise a list of
+        weights
+        """
+        CaptureAgent.registerInitialState(self, gameState)
+
+        layout = gameState.data.layout
+        width, height = layout.width, layout.height
+
+        self._weights = [
+            10,
+            1000,
+            -1000,
+            0, -10 / (width * height), 0,
+            -10,
+            0, 0, 0,
+            0,
+            5,
+            0,
+            -100
+        ]
+
+    def evaluate(self, gameState, action):
+        """
+        The list of features are
+        [0]:    current score
+        (offensive)
+        [1]:    1 if the agent is currently a pacman, 0 otherwise
+        [2]:    negation of [1]
+        [3..5]: average/minimum/maximum distance to targeting foods
+        [6]:    number of foods left
+        [7..9]: average/minimum/maximum distance to targeting capsules
+        [10]:    number of capsules left
+        [11]:    number of foods current agent carrying
+        [12]:    minimum distance to the own side
+        (general)
+        [13]:    1 if action is stop else 0
+        """
+        features = [0] * self._num_features
+
+        successor = gameState.generateSuccessor(self.index, action)
+
+        data = successor.data
+        agentState = successor.getAgentState(self.index)
+
+        features[0] = data.score
+
+        p = agentState.isPacman
+        features[1] = p
+        features[2] = not p
+
+        ########################################################################
+        # offensive features
+        ########################################################################
+        width, height = data.layout.width, data.layout.height
+        half, maxDist = width // 2, height * width
+        foods = data.food.data
+        currPos = successor.getAgentPosition(self.index)
+        wrange = xrange(half, width) if self.red else xrange(half)
+        distancer = self.distancer
+        s, m, M, c = 0, maxDist, 0, 0
+        for x in wrange:
+            for y in xrange(height):
+                if foods[x][y]:
+                    dist = distancer.getDistance(currPos, (x, y))
+                    s += dist
+                    m = min(m, dist)
+                    M = max(M, dist)
+                    c += 1
+        if c > 0:
+            features[3:7] = s / c, m, M, c
+        else:
+            features[3:7] = 0, 0, 0, 0
+
+        red = self.red
+        s, m, M, c = 0, maxDist, 0, 0
+        for x, y in data.capsules:
+            if red and x < half or not red and x >= half:
+                dist = distancer.getDistance(currPos, (x, y))
+                s += dist
+                m = min(m, dist)
+                M = max(M, dist)
+                c += 1
+        if c > 0:
+            features[7:11] = s / c, m, M, c
+        else:
+            features[7:11] = 0, 0, 0, 0
+
+        features[11] = agentState.numCarrying
+
+        walls = data.layout.walls
+        b = half - 1 if red else half
+        features[12] = min(
+            distancer.getDistance(currPos, (b, y))
+            for y in xrange(height) if not walls[b][y]
+        )
+
+        features[13] = action == Directions.STOP
+        return sum(f * w for f, w in zip(features, self._weights))
+
+    def chooseAction(self, gameState):
         """
         Greedily choose the action leads to best successor state from current
         game state
         """
         # greedy strategy
         combs = [
-            (a, self.evaluate(successor, a))
-            for a in successor.getLegalActions(self.index)
+            (a, self.evaluate(gameState, a))
+            for a in gameState.getLegalActions(self.index)
         ]
+        print(combs)
         maxVal = max(map(itemgetter(1), combs))
-        # randomly break tie
+        # randomly break ties if exist
         return random.choice([a for a, v in combs if v == maxVal])
-
-    def getFeatures(self, successor):
-        """
-        Return a list of features, including:
-        1. distance to all foods
-        2. distance to all capsules
-        """
-        features = [0] * self._num_features
-
-        p = successor.getAgentState(self.index).isPacman
-        features[0] = p
-
-        data = successor.data
-        width, height = data.layout.width, data.layout.height
-        half = width // 2
-        foods = data.food.data
-        print(foods)
-        currPos = successor.getAgentPosition(self.index)
-        print(self.index, currPos)
-        wrange = xrange(half) if self.red else xrange(half)
-        maxS = height * width
-        distancer = self.distancer
-        features[1] = sum(
-            maxS - distancer.getDistance(currPos, (x, y))
-            for x in wrange for y in xrange(height) if foods[x][y]
-        )
-
-        capsules = data.capsules
-        red = self.red
-        print(capsules)
-        features[2] = sum(
-            maxS - distancer.getDistance(currPos, (x, y))
-            for x, y in capsules
-            if red and x < half or not red and x >= half
-        )
-
-        features[3] = self.getScore(successor)
-
-        features[4] = not p
-
-        print(features)
-        return features
-
-
-class AdversarialAgent(GreedyAgent):
-    """
-    An agent with adversial strategy (Expecti Minimax), which is essentially an
-    agent using heuristic strategy
-    """
-    __slots__ = ()
-
-    def chooseAction(self, successor):
-        pass
 
 
 class offensiveAgent(CaptureAgent):
