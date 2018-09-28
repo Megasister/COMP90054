@@ -48,7 +48,7 @@ def createTeam(
 # Abstract Agents
 ################################################################################
 # force new style Python 2 class by multiple inheritance
-class HeuristicAgent(CaptureAgent, object):
+class GreedyAgent(CaptureAgent, object):
     """
     This is an abstract class generalising all agents make decision based on
     evaluation as a dot product of features and weights
@@ -70,13 +70,20 @@ class HeuristicAgent(CaptureAgent, object):
         """
         pass
 
-    @abstractmethod
     def chooseAction(self, gameState):
         """
-        Choose the action leads to best successor state from current
+        Greedily choose the action leads to best successor state from current
         game state
         """
-        pass
+        # greedy strategy
+        combs = [
+            (a, self.evaluate(gameState, a))
+            for a in gameState.getLegalActions(self.index)
+        ]
+        print(combs)
+        maxVal = max(map(itemgetter(1), combs))
+        # randomly break ties if exist
+        return random.choice([a for a, v in combs if v == maxVal])
 
 
 class WeightTrainableAgent(object):
@@ -103,16 +110,17 @@ class WeightTrainableAgent(object):
 ################################################################################
 # Concrete Agents
 ################################################################################
-class OffensiveGreedyAgent(HeuristicAgent):
+class OffensiveGreedyAgent(GreedyAgent):
     """
-    An agent greedily choose the maximum score of next step only
+    An agent greedily choose the maximum score of next step only with
+    offensive strategy
     """
     __slots__ = "_weights"
 
     _num_features = 14
 
     def __init__(self, index, red, timeForComputing=.1):
-        HeuristicAgent.__init__(self, index, timeForComputing)
+        GreedyAgent.__init__(self, index, timeForComputing)
         object.__init__(self)
 
         self._weights = None
@@ -215,23 +223,77 @@ class OffensiveGreedyAgent(HeuristicAgent):
             for y in xrange(height) if not walls[b][y]
         )
 
+        ########################################################################
+        # general features
+        ########################################################################
         features[13] = action == Directions.STOP
         return sum(f * w for f, w in zip(features, self._weights))
 
-    def chooseAction(self, gameState):
+
+class DefensiveGreedyAgent(GreedyAgent):
+    """
+    An agent greedily choose the maximum score of next step only with
+    defensive strategy
+    """
+    __slots__ = "_weights"
+
+    _num_features = 4
+
+    def __init__(self, index, red, timeForComputing=.1):
+        GreedyAgent.__init__(self, index, timeForComputing)
+        object.__init__(self)
+
+        self._weights = None
+
+    def registerInitialState(self, gameState):
         """
-        Greedily choose the action leads to best successor state from current
-        game state
+        Initialise the agent with the given state and initialise a list of
+        weights
         """
-        # greedy strategy
-        combs = [
-            (a, self.evaluate(gameState, a))
-            for a in gameState.getLegalActions(self.index)
+        CaptureAgent.registerInitialState(self, gameState)
+
+        layout = gameState.data.layout
+        width, height = layout.width, layout.height
+
+        self._weights = [
+            10,
+            -1000,
+            1000,
+            -100
         ]
-        print(combs)
-        maxVal = max(map(itemgetter(1), combs))
-        # randomly break ties if exist
-        return random.choice([a for a, v in combs if v == maxVal])
+
+    def evaluate(self, gameState, action):
+        """
+        The list of features are
+        [0]:    current score
+        (offensive)
+        [1]:    1 if the agent is currently a pacman, 0 otherwise
+        [2]:    negation of [1]
+        (general)
+        [3]:    1 if action is stop else 0
+        """
+        features = [0] * self._num_features
+
+        successor = gameState.generateSuccessor(self.index, action)
+
+        data = successor.data
+        agentState = successor.getAgentState(self.index)
+
+        features[0] = data.score
+
+        p = agentState.isPacman
+        features[1] = p
+        features[2] = not p
+
+        ########################################################################
+        # defensive features
+        ########################################################################
+
+        ########################################################################
+        # general features
+        ########################################################################
+        features[3] = action == Directions.STOP
+        return sum(f * w for f, w in zip(features, self._weights))
 
 
 class offensiveAgent(CaptureAgent):
