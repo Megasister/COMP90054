@@ -42,13 +42,13 @@ class FeatureWeightAgent(CaptureAgent, object):
     """
     __metaclass__ = ABCMeta
     # prohibit creation of __dict__ for fast access
-    __slots__ = "baseWeights"
+    __slots__ = "_baseWeights"
 
     def __init__(self, index, red, numWeights, timeForComputing=.1):
         super(CaptureAgent, self).__init__(index, timeForComputing)
         super(object, self).__init__()
 
-        self.baseWeights = [1] * numWeights
+        self._baseWeights = [1] * numWeights
         self.red = red
 
     def registerInitialState(self, gameState):
@@ -90,39 +90,16 @@ class FeatureWeightAgent(CaptureAgent, object):
         Return an iterable (preferably a list) of weights which needs to have
         same number of items as the features return by getFeatures
         """
-        return self.baseWeights
-
-
-class OffensiveFeatureAgent(FeatureWeightAgent):
-    """
-    An abstract class represent a feature-based agent to make offensive decision
-    when in the opponent side
-    """
-    __metaclass__ = ABCMeta
-    __slots__ = ()
-
-    def getFeatures(self, successor):
-        """
-        Return a list of features, including:
-        1. distance to all foods
-        """
-        features = []
-
-        data = successor.data
-        width, height = data.layout.width, data.layout.height
-        foods = data.food.data
-        curr = successor.getAgentPosition(self.index)
-        wrange = range(width / 2) if self.red else range(width / 2, width)
-        features.append(sum(
-            width - self.distancer.getDistance(curr, (x, y))
-            for y in xrange(height) for x in wrange if foods[x][y])
-        )
-
-        return features
+        return self._baseWeights
 
 
 class GreedyAgent(FeatureWeightAgent):
+    """
+    An agent greedily choose the maximum score of next step only
+    """
     __slots__ = ()
+
+    _num_features = 5
 
     def chooseAction(self, successor):
         """
@@ -137,6 +114,48 @@ class GreedyAgent(FeatureWeightAgent):
         maxVal = max(map(itemgetter(1), combs))
         # randomly break tie
         return random.choice([a for a, v in combs if v == maxVal])
+
+    def getFeatures(self, successor):
+        """
+        Return a list of features, including:
+        1. distance to all foods
+        2. distance to all capsules
+        """
+        features = [0] * self._num_features
+
+        p = successor.getAgentState(self.index).isPacman
+        features[0] = p
+
+        data = successor.data
+        width, height = data.layout.width, data.layout.height
+        half = width // 2
+        foods = data.food.data
+        print(foods)
+        currPos = successor.getAgentPosition(self.index)
+        print(self.index, currPos)
+        wrange = xrange(half) if self.red else xrange(half)
+        maxS = height * width
+        distancer = self.distancer
+        features[1] = sum(
+            maxS - distancer.getDistance(currPos, (x, y))
+            for x in wrange for y in xrange(height) if foods[x][y]
+        )
+
+        capsules = data.capsules
+        red = self.red
+        print(capsules)
+        features[2] = sum(
+            maxS - distancer.getDistance(currPos, (x, y))
+            for x, y in capsules
+            if red and x < half or not red and x >= half
+        )
+
+        features[3] = self.getScore(successor)
+
+        features[4] = not p
+
+        print(features)
+        return features
 
 
 class AdversarialAgent(GreedyAgent):
