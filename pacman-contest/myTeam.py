@@ -1010,3 +1010,136 @@ class atLeastDefensiveAgent(CaptureAgent):
                 return True
             else:
                 return False
+
+
+#work done by Lai
+#an agent that uses Q approximation which equals features*weight,
+#which is similar to baseline.py
+#weights are to be modified
+#last update 29/09/2018
+class OffensiveAgent(CaptureAgent):
+  """
+  A base class for reflex agents that chooses score-maximizing actions
+  """
+ 
+  def registerInitialState(self, gameState):
+    self.start = gameState.getAgentPosition(self.index)
+    CaptureAgent.registerInitialState(self, gameState)
+    self.return_x = gameState.data.layout.width / 2
+    self.return_y = gameState.data.layout.height / 2
+    self.goBack = False
+    
+
+  def chooseAction(self, gameState):
+    """
+    Picks among the actions with the highest Q(s,a).
+    """
+    actions = gameState.getLegalActions(self.index)
+
+    # You can profile your evaluation time by uncommenting these lines
+    # start = time.time()
+    values = [self.evaluate(gameState, a) for a in actions]
+    # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
+    maxValue = max(values)
+    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+    return random.choice(bestActions)
+
+  def getSuccessor(self, gameState, action):
+    """
+    Finds the next successor which is a grid position (location tuple).
+    """
+    successor = gameState.generateSuccessor(self.index, action)
+    pos = successor.getAgentState(self.index).getPosition()
+    if pos != nearestPoint(pos):
+      # Only half a grid position was covered
+      return successor.generateSuccessor(self.index, action)
+    else:
+      return successor
+
+  def evaluate(self, gameState, action):
+    """
+    Computes a linear combination of features and feature weights
+    """
+    features = self.getFeatures(gameState, action)
+    weights = self.getWeights(gameState, action)
+    return features * weights
+
+  def getFeatures(self, gameState, action):
+    """
+    Returns a counter of features for the state
+    """
+    features = util.Counter()
+    successor = self.getSuccessor(gameState, action)
+    #successor pos
+    next_x, next_y =successor.getAgentState(self.index).getPosition()
+    
+    #number of remaining food
+    food = self.getFood(gameState)
+    foodList = food.asList()
+    features['foodRemaining'] = len(foodList)
+    
+    #distance to the nearest food
+    if len(foodList) > 0:
+        #compute the minimum mazeDistance to food
+        minFood = min([self.getMazeDistance((next_x, next_y), foodPos) for foodPos in foodList])
+        features['distanceToFood'] = minFood
+    
+    #number of food carrying
+    foodCarrying = successor.getAgentState(self.index).numCarrying
+    features['foodCarrying'] = foodCarrying
+    
+    #distance to the nearest enermy
+    enemies = [successor.getAgentState(a) for a in self.getOpponents(successor)]
+    ghosts = filter(lambda x: not x.isPacman and x.getPosition() != None, enemies)
+    pacmen = filter(lambda x: x.isPacman and x.getPosition() != None, enemies)
+    
+    #distance to the nearest ghost
+    if len(ghosts) > 0:
+        minGhost = min([self.getMazeDistance((next_x, next_y), ghost.getPosition()) for ghost in ghosts])
+        features['distanceToGhost'] = minGhost
+    
+    #distance to the nearest pacman
+    if len(pacmen) > 0:
+        minPacman = min([self.getMazeDistance((next_x, next_y), pacman.getPosition()) for pacman in pacmen])
+        features['distanceToPacman'] = minPacman
+    
+    #distance to the nearest capsule
+    if self.red:
+        capsuleList = gameState.getBlueCapsules()
+    else:
+        capsuleList = gameState.getRedCapsules()
+    if len(capsuleList) > 0:
+        #compute the minimum mazeDistance to capsule
+        minCapsule = min([self.getMazeDistance((next_x, next_y), capsulePos) for capsulePos in capsuleList])
+        features['distanceToCapsule'] = minCapsule
+    
+    #determine if is Pacman
+    features['isPacman'] = successor.getAgentState(self.index).isPacman
+    
+    #distance to return
+    features['distanceToReturn'] = self.getMazeDistance((next_x, next_y), (self.return_x, self.return_y))
+    
+    #return conditions
+    if len(foodList) <= 2 or foodCarrying > 5:
+        self.goBack = True
+    else:
+        self.goBack = False
+    
+    
+    return features
+
+  def getWeights(self, gameState, action):
+    """
+    Normally, weights do not depend on the gamestate.  They can be either
+    a counter or a dictionary.
+    """
+    #returning food
+    if self.goBack:
+        return {'foodRemaining': -1, 'distanceToFood': -2, 'foodCarrying': -1,
+            'distanceToGhost': 2, 'distanceToPacman': -5, 'distanceToCapsule': -2,
+            'isPacman': -1, 'distanceToReturn' : -100}
+    else:
+        return {'foodRemaining': -1, 'distanceToFood': -2, 'foodCarrying': 1,
+            'distanceToGhost': 2, 'distanceToPacman': -5, 'distanceToCapsule': -2,
+            'isPacman': 0, 'distanceToReturn' : 0}
+    
