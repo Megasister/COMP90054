@@ -1014,9 +1014,11 @@ class atLeastDefensiveAgent(CaptureAgent):
 
 #work done by Lai
 #an agent that uses Q approximation which equals features*weight,
-#which is similar to baseline.py
-#weights are to be modified
-#last update 29/09/2018
+#structure is similar to baseline.py
+#weights are updated but can be refined
+#last update 1/10/2018
+
+
 class OffensiveAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
@@ -1028,6 +1030,7 @@ class OffensiveAgent(CaptureAgent):
     self.return_x = gameState.data.layout.width / 2
     self.return_y = gameState.data.layout.height / 2
     self.goBack = False
+    
     
 
   def chooseAction(self, gameState):
@@ -1096,6 +1099,9 @@ class OffensiveAgent(CaptureAgent):
     #distance to the nearest ghost
     if len(ghosts) > 0:
         minGhost = min([self.getMazeDistance((next_x, next_y), ghost.getPosition()) for ghost in ghosts])
+        #ignore if enermy is scared
+        scaredTime = min([successor.getAgentState(ghost).scaredTimer for ghost in self.getOpponents(successor)])
+        if (scaredTime > 0): minGhost = 0
         features['distanceToGhost'] = minGhost
     
     #distance to the nearest pacman
@@ -1116,8 +1122,25 @@ class OffensiveAgent(CaptureAgent):
     #determine if is Pacman
     features['isPacman'] = successor.getAgentState(self.index).isPacman
     
-    #distance to return
-    features['distanceToReturn'] = self.getMazeDistance((next_x, next_y), (self.return_x, self.return_y))
+    #distance to return, copied from Tinson's code
+    walls = successor.data.layout.walls
+    width, height = successor.data.layout.width,successor.data.layout.height
+    half = width // 2
+    b = half - 1 if self.red else half
+    features['distanceToReturn'] = min(self.getMazeDistance((next_x, next_y), (b, y)) for y in xrange(height) if not walls[b][y])
+    
+    #determine if is stuck
+    features['stuck'] = action == Directions.STOP
+
+    #score feature from baseline.py
+    features['successorScore'] = self.getScore(successor)
+    
+    #distance to teammate
+    team = [teammate for teammate in self.getTeam(successor) if teammate != self.index]
+    distanceToTeamate = min([self.getMazeDistance((next_x, next_y), successor.getAgentState(teammate).getPosition()) for teammate in team])
+    #ignore teammate if is already far away
+    #if (distanceToTeamate) > 10: distanceToTeamate = 0
+    features['distanceToTeammate'] = distanceToTeamate
     
     #return conditions
     if len(foodList) <= 2 or foodCarrying > 5:
@@ -1135,11 +1158,17 @@ class OffensiveAgent(CaptureAgent):
     """
     #returning food
     if self.goBack:
-        return {'foodRemaining': -1, 'distanceToFood': -2, 'foodCarrying': -1,
-            'distanceToGhost': 2, 'distanceToPacman': -5, 'distanceToCapsule': -2,
-            'isPacman': -1, 'distanceToReturn' : -100}
-    else:
-        return {'foodRemaining': -1, 'distanceToFood': -2, 'foodCarrying': 1,
-            'distanceToGhost': 2, 'distanceToPacman': -5, 'distanceToCapsule': -2,
-            'isPacman': 0, 'distanceToReturn' : 0}
+        return {'foodRemaining': 0, 'distanceToFood': -1, 'foodCarrying': 0,
+            'distanceToGhost': 5, 'distanceToPacman': -5, 'distanceToCapsule': -2,
+            'isPacman': -1, 'distanceToReturn' : -10, 'stuck': -50, 'successorScore': 100}
+    else:#looking for food
+        return {'foodRemaining': 0, 'distanceToFood': -3, 'foodCarrying': 10,
+            'distanceToGhost': 5, 'distanceToPacman': -6, 'distanceToCapsule': -2,
+            'isPacman': 2, 'distanceToReturn' : -1, 'stuck': -50, 'successorScore': 100,
+            'distanceToTeammate': 1}
+    
+    
+    
+    
+    
     
