@@ -130,15 +130,23 @@ class OffensiveGreedyAgent(GreedyAgent):
     An agent greedily choose the maximum score of next step only with
     offensive strategy
     """
-    __slots__ = "_weights"
-
-    _num_features = 14
+    __slots__ = "_half", "_height", "_maxDist", "_teamTotalFood", "_weights", \
+                "_width"
 
     def __init__(self, index, red, timeForComputing=.1):
         GreedyAgent.__init__(self, index, timeForComputing)
         object.__init__(self)
 
-        self._weights = None
+        self._half = self._height = self._maxDist = self._weights = \
+            self._width = None
+        self._teamTotalFood = 0
+
+    def _countFood(self, foods, half, width):
+        red = self.red
+        self._teamTotalFood = sum(
+            f for x in (xrange(half, width) if red else xrange(half))
+            for f in foods[x]
+        )
 
     def registerInitialState(self, gameState):
         """
@@ -147,101 +155,125 @@ class OffensiveGreedyAgent(GreedyAgent):
         """
         CaptureAgent.registerInitialState(self, gameState)
 
-        layout = gameState.data.layout
-        width, height = layout.width, layout.height
+        data = gameState.data
+        layout = data.layout
+        self._height = layout.height
+        width = self._width = layout.width
+        self._half = width // 2
+        maxDist = self._maxDist = self._height * width
+        self._countFood(data.food.data, self._half, width)
 
         self._weights = [
-            10,
-            1000,
-            -1000,
-            0, -10 / (width * height), 0,
-            -10,
-            0, 0, 0,
-            0,
-            5,
-            0,
-            -100
+            maxDist * 2,
+            -100,
+            100,
+            -5,
+            -2,
+            maxDist,
+            1,
+            1,
+            -10, -8, -6, -4, -2
         ]
 
     def evaluate(self, gameState, action):
         """
-        The list of features are
-        [0]:    current score
-        (offensive)
-        [1]:    1 if the agent is currently a pacman, 0 otherwise
-        [2]:    negation of [1]
-        [3..5]: average/minimum/maximum distance to targeting foods
-        [6]:    number of foods left
-        [7..9]: average/minimum/maximum distance to targeting capsules
-        [10]:    number of capsules left
-        [11]:    number of foods current agent carrying
-        [12]:    minimum distance to the own side
-        (general)
-        [13]:    1 if action is stop else 0
+        Generates a vector of features then return the dot product of it and the
+        weight vector
         """
-        features = [0] * self._num_features
+        features = [0] * 13
 
-        successor = gameState.generateSuccessor(self.index, action)
+        index = self.index
+        successor = gameState.generateSuccessor(index, action)
 
         data = successor.data
-        agentState = successor.getAgentState(self.index)
-
-        features[0] = data.score
-
-        p = agentState.isPacman
-        features[1] = p
-        features[2] = not p
-
-        ########################################################################
-        # offensive features
-        ########################################################################
-        width, height = data.layout.width, data.layout.height
-        half, maxDist = width // 2, height * width
-        foods = data.food.data
-        currPos = successor.getAgentPosition(self.index)
-        wrange = xrange(half, width) if self.red else xrange(half)
-        distancer = self.distancer
-        s, m, M, c = 0, maxDist, 0, 0
-        for x in wrange:
-            for y in xrange(height):
-                if foods[x][y]:
-                    dist = distancer.getDistance(currPos, (x, y))
-                    s += dist
-                    m = min(m, dist)
-                    M = max(M, dist)
-                    c += 1
-        if c > 0:
-            features[3:7] = s / c, m, M, c
-        else:
-            features[3:7] = 0, 0, 0, 0
-
-        red = self.red
-        s, m, M, c = 0, maxDist, 0, 0
-        for x, y in data.capsules:
-            if red and x < half or not red and x >= half:
-                dist = distancer.getDistance(currPos, (x, y))
-                s += dist
-                m = min(m, dist)
-                M = max(M, dist)
-                c += 1
-        if c > 0:
-            features[7:11] = s / c, m, M, c
-        else:
-            features[7:11] = 0, 0, 0, 0
-
-        features[11] = agentState.numCarrying
-
-        walls = data.layout.walls
-        b = half - 1 if red else half
-        features[12] = min(
-            distancer.getDistance(currPos, (b, y))
-            for y in xrange(height) if not walls[b][y]
-        )
 
         ########################################################################
         # general features
         ########################################################################
-        features[13] = action == Directions.STOP
+        # score
+        features[0] = data.score
+        # determine if the action is a STOP
+        features[1] = action == Directions.STOP
+
+        agentState = data.agentStates[index]
+        p = agentState.isPacman
+        # determine if currently is a Pacman
+        features[2] = p
+
+        ########################################################################
+        # offensive features
+        ########################################################################
+        height = self._height
+        width = self._width
+        half = width // 2
+        foods = data.food.data
+        currPos = agentState.configuration.pos
+        distancer = self.distancer
+        maxDist = self._maxDist
+        red = self.red
+        m = maxDist
+        for x in (xrange(half, width) if red else xrange(half)):
+            for y in xrange(height):
+                if foods[x][y]:
+                    m = min(m, distancer.getDistance(currPos, (x, y)))
+        # the most distant food
+        features[3] = m
+
+        m = maxDist
+        for x, y in data.capsules:
+            if not red and x < half or red and x >= half:
+                m = min(m, distancer.getDistance(currPos, (x, y)))
+        # the most distant capsule
+        features[4] = m
+        features[5] = agentState.numCarrying
+
+        # the closest distance to the boundary to return the carry food
+        walls = data.layout.walls.data
+        b = half - 1 if red else half
+        features[6] = min(
+            distancer.getDistance(currPos, (b, y))
+            for y in xrange(height) if not walls[b][y]
+        )
+
+        if p:
+            for i in (gameState.blueTeam if red else gameState.redTeam):
+                s = data.agentStates[i]
+                conf = s.configuration
+                pos = conf.pos if conf else None
+                st = s.scaredTimer
+                print(st)
+                if st == 0:
+                    if pos is None:
+                        # could consider the noisy distance distribution
+                        pass
+                    else:
+                        dist = distancer.getDistance(pos, currPos)
+                        print("    " + str(dist))
+                        # if the opponent agent is not currently a ghost
+                        # if the opponent is not currently in the same side
+                        if s.isPacman:
+                            # determine the closest distance to the boundary
+                            ob = half if red else half - 1
+                            odb = min(
+                                distancer.getDistance(pos, (ob, y))
+                                for y in xrange(height) if not walls[ob][y]
+                            )
+                            if odb < 2:
+                                features[7 + dist] += 1
+                        else:
+                            if dist < 6:
+                                features[7 + dist] += 1
+                else:
+                    # opponent will not affect current state
+                    features[7] += 1
+        else:
+            # could consider defensive operation as well
+            pass
+
+        ########################################################################
+        # dot product
+        ########################################################################
+        print(action, len(features), features, len(self._weights), self._weights)
         return sum(f * w for f, w in zip(features, self._weights))
 
 
@@ -251,8 +283,6 @@ class DefensiveGreedyAgent(GreedyAgent):
     defensive strategy
     """
     __slots__ = "_weights"
-
-    _num_features = 4
 
     def __init__(self, index, red, timeForComputing=.1):
         GreedyAgent.__init__(self, index, timeForComputing)
@@ -287,7 +317,7 @@ class DefensiveGreedyAgent(GreedyAgent):
         (general)
         [3]:    1 if action is stop else 0
         """
-        features = [0] * self._num_features
+        features = [0] * 4
 
         successor = gameState.generateSuccessor(self.index, action)
 
@@ -311,8 +341,9 @@ class DefensiveGreedyAgent(GreedyAgent):
         return sum(f * w for f, w in zip(features, self._weights))
 
 
-class ExpectiMinAgent(CaptureAgent, ExpectiMin):
-    pass
+################################################################################
+# end
+################################################################################
 
 
 class offensiveAgent(CaptureAgent):
