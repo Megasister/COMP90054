@@ -54,13 +54,27 @@ class GreedyAgent(CaptureAgent, object):
     evaluation as a dot product of features and weights
     """
     __metaclass__ = ABCMeta
-    __slots__ = ()
+    __slots__ = "_half", "_height", "_maxDist", "_teamTotalFood", "_weights", \
+                "_width"
 
     def __init__(self, index, red, timeForComputing=.1):
         CaptureAgent.__init__(self, index, timeForComputing)
         object.__init__(self)
 
+        self._half = self._height = self._maxDist = self._weights = \
+            self._width = None
+
         self.red = red
+
+    def registerInitialState(self, gameState):
+        CaptureAgent.registerInitialState(self, gameState)
+
+        data = gameState.data
+        layout = data.layout
+        self._height = layout.height
+        width = self._width = layout.width
+        self._half = width // 2
+        self._maxDist = self._height * width
 
     @abstractmethod
     def evaluate(self, gameState, action):
@@ -86,6 +100,42 @@ class GreedyAgent(CaptureAgent, object):
         return random.choice([a for a, v in combs if v == maxVal])
 
 
+class ExpectiMin(object):
+    """
+    A mixin implement the Expecti Min adversarial search and assuming the class
+    have a self.evaluate method
+    """
+    __metaclass__ = ABCMeta
+    __slots__ = ()
+
+    def expectMin(self):
+        pass
+
+    def evalMax(self):
+        pass
+
+
+class WeightTrainableAgent(object):
+    """
+    This is an abstract class generalising all agents make decision based on
+    evaluation and it is trainable (specifically w.r.t weights)
+    """
+    __metaclass__ = ABCMeta
+    __slots__ = ()
+
+    @abstractmethod
+    def train(self):
+        pass
+
+    @abstractmethod
+    def load(self):
+        pass
+
+    @abstractmethod
+    def save(self):
+        pass
+
+
 class AbuseMixin(object):
     """
     This maxin implement a very simple observation function, which may abuse
@@ -106,15 +156,12 @@ class OffensiveGreedyAgent(GreedyAgent):
     An agent greedily choose the maximum score of next step only with
     offensive strategy
     """
-    __slots__ = "_half", "_height", "_maxDist", "_teamTotalFood", "_weights", \
-                "_width"
+    __slots__ = ()
 
     def __init__(self, index, red, timeForComputing=.1):
         GreedyAgent.__init__(self, index, timeForComputing)
         object.__init__(self)
 
-        self._half = self._height = self._maxDist = self._weights = \
-            self._width = None
         self._teamTotalFood = 0
 
     def _countFood(self, foods, half, width):
@@ -129,16 +176,11 @@ class OffensiveGreedyAgent(GreedyAgent):
         Initialise the agent with the given state and initialise a list of
         weights
         """
-        CaptureAgent.registerInitialState(self, gameState)
+        GreedyAgent.registerInitialState(self, gameState)
 
-        data = gameState.data
-        layout = data.layout
-        self._height = layout.height
-        width = self._width = layout.width
-        self._half = width // 2
-        maxDist = self._maxDist = self._height * width
-        self._countFood(data.food.data, self._half, width)
+        self._countFood(gameState.data.food.data, self._half, self._width)
 
+        maxDist = self._maxDist
         self._weights = [
             maxDist * 2,
             -100,
@@ -258,29 +300,42 @@ class DefensiveGreedyAgent(GreedyAgent):
     An agent greedily choose the maximum score of next step only with
     defensive strategy
     """
-    __slots__ = "_weights"
+    __slots__ = "_validPos", "_weights"
 
     def __init__(self, index, red, timeForComputing=.1):
-        GreedyAgent.__init__(self, index, timeForComputing)
+        GreedyAgent.__init__(self, index, red, timeForComputing)
         object.__init__(self)
 
-        self._weights = None
+        self._validPos = self._weights = None
+
+    def _observeState(self, gameState):
+        return {
+            i: self._observerAgent(gameState, i)
+            for i in (gameState.blueTeam if self.red else gameState.redTeam)
+        }
+
+    def _observerAgent(self, gameState, index):
+        agentState = gameState.getAgentStates(index)
+
+        red = self.red
+        return {}
 
     def registerInitialState(self, gameState):
         """
         Initialise the agent with the given state and initialise a list of
         weights
         """
-        CaptureAgent.registerInitialState(self, gameState)
+        GreedyAgent.registerInitialState(self, gameState)
 
-        layout = gameState.data.layout
-        width, height = layout.width, layout.height
+        wall = gameState.data.walls.data
+        self._validPos = [
+            (x, y)
+            for x in xrange(self._width)
+            for y in xrange(self._height)
+            if not wall[x][y]
+        ]
 
         self._weights = [
-            10,
-            -1000,
-            1000,
-            -100
         ]
 
     def evaluate(self, gameState, action):
