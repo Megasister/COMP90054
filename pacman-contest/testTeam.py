@@ -96,12 +96,16 @@ class GreedyAgent(CaptureAgent, object):
         return random.choice([a for a, v in combs if v == maxVal])
 
 
+# helper function to perform element-wise addition on two lists
+def _sum_list(x, y):
+    return map(add, x, y)
+
+
 class InferenceMixin(object):
     """
     Mixin for probability inference of positions of opponent agents
     """
     __metaclass__ = ABCMeta
-    __slots__ = "_validPos"
 
     def __init__(self):
         self._validPos = None
@@ -115,7 +119,12 @@ class InferenceMixin(object):
             if not wall[x][y]
         ]
 
-    def _observerAgent(self, pos, ndist):
+    def _observerAgent(self, pos, ndist, agenState):
+        # if the agent is visible return the position directly
+        conf = agenState.configuration
+        if conf is not None:
+            return {conf.pos: 1}
+
         # obtain all possible positions with the given distance
         vp = self._validPos
         ps = [p for p in vp if manhattanDistance(pos, p) == ndist]
@@ -126,23 +135,25 @@ class InferenceMixin(object):
             for p in vp
         }
 
-        # count the valid points to each possible position
-        def _sum_list(x, y):
-            return map(add, x, y)
-        s = reduce(_sum_list, freq.values())
+        # count the valid points to each possible position then obtain each of
+        # the probabilities
+        sl = len(ps)
+        s = [1 / v / sl for v in reduce(_sum_list, freq.values())]
 
         # sum up the probabilities
         return {
-            k: sum(iv / s[i] for i, iv in enumerate(v))
+            k: sum(iv * si for iv, si in zip(v, s))
             for k, v in freq.items()
-            if v
+            # ignore position with probability of 0
+            if any(v)
         }
 
     def _observeState(self, gameState):
         dists = gameState.agentDistances
-        pos = gameState.agentStates[self.index].configuration.pos
+        agentStates = gameState.data.agentStates
+        pos = agentStates[self.index].configuration.pos
         return {
-            i: self._observerAgent(pos, dists[i])
+            i: self._observerAgent(pos, dists[i], agentStates[i])
             for i in (gameState.blueTeam if self.red else gameState.redTeam)
         }
 
@@ -198,7 +209,7 @@ class AbuseDelegate(object):
 ################################################################################
 # Concrete Agents
 ################################################################################
-class OffensiveGreedyAgent(GreedyAgent):
+class OffensiveGreedyAgent(GreedyAgent, InferenceMixin):
     """
     An agent greedily choose the maximum score of next step only with
     offensive strategy
@@ -207,6 +218,7 @@ class OffensiveGreedyAgent(GreedyAgent):
 
     def __init__(self, index, red, timeForComputing=.1):
         GreedyAgent.__init__(self, index, timeForComputing)
+        InferenceMixin.__init__(self)
 
         self._teamTotalFood = 0
 
@@ -224,7 +236,10 @@ class OffensiveGreedyAgent(GreedyAgent):
         """
         GreedyAgent.registerInitialState(self, gameState)
 
-        self._countFood(gameState.data.food.data, self._half, self._width)
+        data = gameState.data
+        self._initialiseValidPos(data.layout.walls.data)
+        self._countFood(data.food.data, self._half, self._width)
+        print(self._validPos)
 
         maxDist = self._maxDist
         self._weights = [
@@ -244,6 +259,7 @@ class OffensiveGreedyAgent(GreedyAgent):
         Generates a vector of features then return the dot product of it and the
         weight vector
         """
+        print(self._observeState(gameState))
         features = [0] * 13
 
         index = self.index
