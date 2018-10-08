@@ -239,7 +239,6 @@ class OffensiveGreedyAgent(GreedyAgent, InferenceMixin):
         data = gameState.data
         self._initialiseValidPos(data.layout.walls.data)
         self._countFood(data.food.data, self._half, self._width)
-        print(self._validPos)
 
         maxDist = self._maxDist
         self._weights = [
@@ -259,7 +258,7 @@ class OffensiveGreedyAgent(GreedyAgent, InferenceMixin):
         Generates a vector of features then return the dot product of it and the
         weight vector
         """
-        print(self._observeState(gameState))
+
         features = [0] * 13
 
         index = self.index
