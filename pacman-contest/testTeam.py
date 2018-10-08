@@ -1,4 +1,4 @@
-# myTeam.py
+# testTeam.py
 # ---------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
@@ -16,9 +16,9 @@ from __future__ import division, print_function
 from abc import ABCMeta, abstractmethod
 from baselineTeam import DefensiveReflexAgent
 from captureAgents import CaptureAgent
-from distanceCalculator import Distancer, manhattanDistance
+from distanceCalculator import manhattanDistance
 from game import Directions
-from operator import itemgetter
+from operator import itemgetter, add
 import random
 
 infinity = float("inf")
@@ -107,6 +107,7 @@ class InferenceMixin(object):
         self._validPos = None
 
     def _initialiseValidPos(self, wall):
+        # initialise all valid positions with the given wall configuration
         self._validPos = [
             (x, y)
             for x in xrange(self._width)
@@ -115,11 +116,27 @@ class InferenceMixin(object):
         ]
 
     def _observerAgent(self, pos, ndist):
+        # obtain all possible positions with the given distance
         vp = self._validPos
         ps = [p for p in vp if manhattanDistance(pos, p) == ndist]
-        freq = {p: sum(manhattanDistance(p, ip) < 7 for ip in ps) for p in vp}
-        s = sum(freq.values())
-        return {k: v / s for k, v in freq.items()}
+
+        # test each point if it is in the noisy distance to the points above
+        freq = {
+            p: [manhattanDistance(p, ip) < 7 for ip in ps]
+            for p in vp
+        }
+
+        # count the valid points to each possible position
+        def _sum_list(x, y):
+            return map(add, x, y)
+        s = reduce(_sum_list, freq.values())
+
+        # sum up the probabilities
+        return {
+            k: sum(iv / s[i] for i, iv in enumerate(v))
+            for k, v in freq.items()
+            if v
+        }
 
     def _observeState(self, gameState):
         dists = gameState.agentDistances

@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ac82a224-8231-45f0-8131-7b396b092dc0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pacman-contest/myTeam.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/myTeam.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pacman-contest/testTeam.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/testTeam.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -44,13 +43,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="56" />
-          <entry key="py" value="11203" />
+          <entry key="py" value="11806" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="56" />
-          <entry key="Python" value="11203" />
+          <entry key="Python" value="11806" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.js.language.service.starts" />
@@ -140,8 +139,11 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/testTeam.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="240">
-                  <caret line="15" column="39" lean-forward="true" selection-start-line="15" selection-start-column="39" selection-end-line="16" selection-end-column="45" />
+                <state relative-caret-position="288">
+                  <caret line="18" column="31" selection-start-line="18" selection-start-column="31" selection-end-line="18" selection-end-column="31" />
+                  <folding>
+                    <marker date="1539005665284" expanded="true" signature="4100:4143" ph="..." />
+                  </folding>
                 </state>
               </provider>
             </entry>
@@ -263,7 +265,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.Test MyTeam">
+  <component name="RunManager" selected="Python.Test testTeam">
     <configuration name="Test Baseline" type="PythonConfigurationType" factoryName="Python">
       <module name="comp90054-pacman" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -286,7 +288,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="Test MyTeam" type="PythonConfigurationType" factoryName="Python">
+    <configuration name="Test testTeam" type="PythonConfigurationType" factoryName="Python">
       <module name="comp90054-pacman" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -300,7 +302,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pacman-contest/capture.py" />
-      <option name="PARAMETERS" value="-r myTeam.py -b baselineTeam.py" />
+      <option name="PARAMETERS" value="-r testTeam.py -b baselineTeam.py" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -332,7 +334,7 @@
     </configuration>
     <list>
       <item itemvalue="Python.Test Baseline" />
-      <item itemvalue="Python.Test MyTeam" />
+      <item itemvalue="Python.Test testTeam" />
     </list>
   </component>
   <component name="SvnConfiguration">
@@ -474,8 +476,11 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/testTeam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="15" column="39" lean-forward="true" selection-start-line="15" selection-start-column="39" selection-end-line="16" selection-end-column="45" />
+        <state relative-caret-position="288">
+          <caret line="18" column="31" selection-start-line="18" selection-start-column="31" selection-end-line="18" selection-end-column="31" />
+          <folding>
+            <marker date="1539005665284" expanded="true" signature="4100:4143" ph="..." />
+          </folding>
         </state>
       </provider>
     </entry>
