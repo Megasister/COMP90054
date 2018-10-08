@@ -86,40 +86,16 @@ class GreedyAgent(CaptureAgent, object):
         return random.choice([a for a, v in combs if v == maxVal])
 
 
-class ExpectiMin(object):
+class AbuseMixin(object):
     """
-    A mixin implement the Expecti Min adversarial search and assuming the class
-    have a self.evaluate method
-    """
-    __metaclass__ = ABCMeta
-    __slots__ = ()
-
-    def expectMin(self):
-        pass
-
-    def evalMax(self):
-        pass
-
-
-class WeightTrainableAgent(object):
-    """
-    This is an abstract class generalising all agents make decision based on
-    evaluation and it is trainable (specifically w.r.t weights)
+    This maxin implement a very simple observation function, which may abuse
+    the actual game rule
     """
     __metaclass__ = ABCMeta
     __slots__ = ()
 
-    @abstractmethod
-    def train(self):
-        pass
-
-    @abstractmethod
-    def load(self):
-        pass
-
-    @abstractmethod
-    def save(self):
-        pass
+    def observationFunction(self, gameState):
+        return gameState
 
 
 ################################################################################
