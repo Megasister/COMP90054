@@ -20,6 +20,18 @@ import random
 import time
 import util
 
+#################
+# Team creation #
+#################
+def createTeam(
+    firstIndex,
+    secondIndex,
+    isRed,
+    first='OffensiveAgent',
+    second='OffensiveAgent'
+):
+    return [eval(first)(firstIndex, isRed), eval(second)(secondIndex, isRed)]
+
 
 class offensiveAgent(CaptureAgent):
     def registerInitialState(self, gameState):
@@ -736,6 +748,7 @@ class OffensiveAgent(CaptureAgent):
     self.return_x = gameState.data.layout.width / 2
     self.return_y = gameState.data.layout.height / 2
     self.goBack = False
+    self.danger = False
     
     
 
@@ -809,6 +822,10 @@ class OffensiveAgent(CaptureAgent):
         scaredTime = min([successor.getAgentState(ghost).scaredTimer for ghost in self.getOpponents(successor)])
         if (scaredTime > 0): minGhost = 0
         features['distanceToGhost'] = minGhost
+        if minGhost < 4:
+            self.danger = True;
+    else:
+        self.danger = False;
     
     #distance to the nearest pacman
     if len(pacmen) > 0:
@@ -849,11 +866,10 @@ class OffensiveAgent(CaptureAgent):
     features['distanceToTeammate'] = distanceToTeamate
     
     #return conditions
-    if len(foodList) <= 2 or foodCarrying > 5:
+    if len(foodList) <= 2 or foodCarrying > 4 or self.danger:
         self.goBack = True
     else:
         self.goBack = False
-    
     
     return features
 
@@ -866,15 +882,11 @@ class OffensiveAgent(CaptureAgent):
     if self.goBack:
         return {'foodRemaining': 0, 'distanceToFood': -1, 'foodCarrying': 0,
             'distanceToGhost': 5, 'distanceToPacman': -5, 'distanceToCapsule': -2,
-            'isPacman': -1, 'distanceToReturn' : -10, 'stuck': -50, 'successorScore': 100}
+            'isPacman': -1, 'distanceToReturn' : -1000, 'stuck': -50, 'successorScore': 1000}
     else:#looking for food
         return {'foodRemaining': 0, 'distanceToFood': -3, 'foodCarrying': 10,
             'distanceToGhost': 5, 'distanceToPacman': -6, 'distanceToCapsule': -2,
-            'isPacman': 2, 'distanceToReturn' : -1, 'stuck': -50, 'successorScore': 100,
+            'isPacman': 2, 'distanceToReturn' : -1, 'stuck': -50, 'successorScore': 1000,
             'distanceToTeammate': 1}
-    
-    
-    
-    
     
     
