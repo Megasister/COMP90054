@@ -358,37 +358,29 @@ class DijkstraMonteCarloAgent(CaptureAgent, object):
         )[0]
 
 
-def BeamSearch(index, gameState, evaluate, depth=60, nmax=5):
+def MCTS(index, gameState, evaluate, depth=20, count=50):
     """
-    Game Theoretic Method, an adversarial search
+    Monte Carlo Tree Search
     """
-
-    act = None
-    score = -float("inf")
-    for action in gameState.getLegalActions(index):
-        successors = [gameState.generateSuccessor(index, action)]
-        ind, d = index, depth
-        while d > 0:
-            ind = (ind + 1) % 4
-            actions = [
-                (a, succ)
-                for succ in successors
-                for a in succ.getLegalActions(ind)
-            ]
-            successors = [
-                succ.generateSuccessor(ind, a)
-                for _, a, succ in sorted(
-                    ((-evaluate(succ), a, succ) for a, succ in actions),
-                    key=itemgetter(0)
-                )[:nmax]
-            ]
-            d -= 1
-        s = max(evaluate(succ) for succ in successors)
-        if s > score or s == score and act == Directions.STOP:
-            score = s
-            act = action
-
-    return act
+    actions = gameState.getLegalActions(index)
+    scores = [0] * len(actions)
+    for i, action in enumerate(actions):
+        for c in xrange(count):
+            ind, d = index, depth
+            successor = gameState.generateSuccessor(ind, action)
+            if not successor.isOver():
+                while d > 1:
+                    ind = (ind + 1) % 4
+                    successor = successor.generateSuccessor(
+                        ind, random.choice(successor.getLegalActions(ind))
+                    )
+                    if successor.isOver():
+                        break
+                    d -= 1
+            scores[i] += evaluate(gameState, successor)
+    print(scores)
+    ms = max(scores)
+    return random.choice([a for a, s in zip(actions, scores) if s == ms])
 
 
 class AbuseMonteCarloAgent(CaptureAgent, object):
@@ -586,7 +578,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             for s in states
         ):
             self._recompute = True
-            return BeamSearch(index, gameState, self._eval)
+            return MCTS(index, gameState, self._eval)
 
         if self._recompute or self._prevCarry > agentState.numCarrying:
             self._computeRoute(gameState)
