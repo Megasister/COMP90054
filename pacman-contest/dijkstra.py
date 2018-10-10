@@ -25,6 +25,7 @@ from captureAgents import CaptureAgent
 # Team creation #
 #################
 from distanceCalculator import manhattanDistance
+from game import Directions
 from mixins import InferenceMixin
 
 
@@ -357,26 +358,37 @@ class DijkstraMonteCarloAgent(CaptureAgent, object):
         )[0]
 
 
-def _MCTS(index, gameState, judge, depth=5, count=100):
-    actions = gameState.getLegalActions(index)
-    scores = [0] * len(actions)
-    for i, action in enumerate(actions):
-        for c in xrange(count):
-            ind, d = index, depth
-            successor = gameState.generateSuccessor(ind, action)
-            if not successor.isOver():
-                while d > 1:
-                    ind = (ind + 1) % 4
-                    successor = successor.generateSuccessor(
-                        ind, random.choice(successor.getLegalActions(ind))
-                    )
-                    if successor.isOver():
-                        break
-                    d -= 1
-            scores[i] += judge(gameState, successor)
-    print(scores)
-    ms = max(scores)
-    return random.choice([a for a, s in zip(actions, scores) if s == ms])
+def BeamSearch(index, gameState, evaluate, depth=60, nmax=5):
+    """
+    Game Theoretic Method, an adversarial search
+    """
+
+    act = None
+    score = -float("inf")
+    for action in gameState.getLegalActions(index):
+        successors = [gameState.generateSuccessor(index, action)]
+        ind, d = index, depth
+        while d > 0:
+            ind = (ind + 1) % 4
+            actions = [
+                (a, succ)
+                for succ in successors
+                for a in succ.getLegalActions(ind)
+            ]
+            successors = [
+                succ.generateSuccessor(ind, a)
+                for _, a, succ in sorted(
+                    ((-evaluate(succ), a, succ) for a, succ in actions),
+                    key=itemgetter(0)
+                )[:nmax]
+            ]
+            d -= 1
+        s = max(evaluate(succ) for succ in successors)
+        if s > score or s == score and act == Directions.STOP:
+            score = s
+            act = action
+
+    return act
 
 
 class AbuseMonteCarloAgent(CaptureAgent, object):
@@ -397,10 +409,10 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         self._height = self._width = self._half = self._bound = \
             self._actions = None
         self._prevCarry = 0
+        self._recompute = False
 
         # record each instance created
         self._instances[index // 2] = self
-        self._teammate = (index // 2 + 1) % 2
 
     def registerInitialState(self, gameState):
         """
@@ -529,26 +541,25 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             key=itemgetter(1)
         )[0]
 
-    def _judge(self, gameState, successor):
-        index = self.index
-        gdata, sdata = gameState.data, successor.data
-        sp = sdata.score - gdata.score
-        nc = sdata.agentStates[index].numCarrying
-        ncp = nc - gdata.agentStates[index].numCarrying
-        if sp == 0:
-            if ncp < 0:
-                return -1
-            return nc * 0.5 + 1
-        ncp += sp
-        s = (sp + ncp / 2) * self._height * self._width
-        agentStates = sdata.agentStates
+    def _eval(self, gameState):
+        features = [0] * 5
+
+        data = gameState.data
         distancer = self.distancer
-        pos = agentStates[index].configuration.pos
-        s += sum(
-            distancer.getDistance(pos, agentStates[i].configuration.pos)
-            for i in (gameState.blueTeam if self.red else gameState.redTeam)
-        )
-        return s
+        features[0] = data.score
+
+        agentStates = data.agentStates
+        for i in gameState.redTeam:
+            agentState = agentStates[i]
+            features[1] = agentState.numCarrying
+            features[2] = agentState.isPacman * agentState.scaredTimer
+        for i in gameState.blueTeam:
+            agentState = agentStates[i]
+            features[3] = agentState.numCarrying
+            features[4] = agentState.isPacman * agentState.scaredTimer
+
+        weights = [1, 1, 1, -1, -1]
+        return sum(f * w for f, w in zip(features, weights))
 
     def offenseAction(self, gameState):
         """
@@ -562,18 +573,25 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         agentStates = gameState.data.agentStates
         agentState = agentStates[index]
 
-        if self._prevCarry > agentState.numCarrying:
-            self._computeRoute(gameState)
-        self._prevCarry = agentState.numCarrying
-
         distancer = self.distancer
         pos = agentState.configuration.pos
-        dist = [
-            distancer.getDistance(agentStates[i].configuration.pos, pos)
+        states = [
+            agentStates[i]
             for i in (gameState.blueTeam if red else gameState.redTeam)
         ]
-        if any(d < 5 for d in dist) and agentState.numCarrying > 0:
-            return _MCTS(index, gameState, self._judge, 12)
+        if any(
+            not s.isPacman and s.scaredTimer == 0 and distancer.getDistance(
+                s.configuration.pos, pos
+            ) < 5
+            for s in states
+        ):
+            self._recompute = True
+            return BeamSearch(index, gameState, self._eval)
+
+        if self._recompute or self._prevCarry > agentState.numCarrying:
+            self._computeRoute(gameState)
+            self._recompute = False
+        self._prevCarry = agentState.numCarrying
 
         actions = self._actions
         if agentState.configuration.pos == actions[-1]:
