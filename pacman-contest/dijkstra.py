@@ -30,18 +30,13 @@ def createTeam(
     secondIndex,
     isRed,
     first='DijkstraMonteCarloAgent',
-    second='DefensiveReflexAgent'
+    second='DijkstraMonteCarloAgent',
 ):
     return [
         eval(first)(firstIndex, isRed, False),
-        eval(second)(secondIndex, isRed)
+        eval(second)(secondIndex, isRed, True)
     ]
 
-
-def _probPlus(t1, t2):
-    d1, v1 = t1
-    d2, v2 = t2
-    return d1 + d2 * v2, v1 + v2
 
 ################################################################################
 # Concrete Agents
@@ -66,9 +61,7 @@ class DijkstraMonteCarloAgent(CaptureAgent, InferenceMixin):
 
         self._prevCarry = 0
 
-        hi = index // 2
-        self._instances[hi] = self
-        self._teammate = (hi + 1) % 2
+        self._instances[index // 2] = self
 
     def registerInitialState(self, gameState):
         """
@@ -137,11 +130,13 @@ class DijkstraMonteCarloAgent(CaptureAgent, InferenceMixin):
         self._actions = path
 
     def _notifyEaten(self, index, initPos):
-        self._distribution[index] = {tuple(map(int, initPos)): 1.0}
+        for ins in self._instances:
+            ins._distribution[index] = {tuple(map(int, initPos)): 1.0}
 
     def _notifySeen(self, index, pos):
         # share visibility on the map
-        self._distribution[index] = {tuple(map(int, pos)): 1.0}
+        for ins in self._instances:
+            ins._distribution[index] = {tuple(map(int, pos)): 1.0}
 
     def _notifyDeath(self):
         # TODO: notify the teammate the death of the current agent
@@ -166,14 +161,52 @@ class DijkstraMonteCarloAgent(CaptureAgent, InferenceMixin):
         Choose a defensive action
         """
         index = self.index
-        pos = gameState.data.agentStates[index].configuration.pos
+        agentState = gameState.data.agentStates[index]
+        pos = agentState.configuration.pos
         distancer = self.distancer
 
-        expected = {
-            k: sum(distancer.getDistance(pos, p) * v for p, v in dist.items())
-            for k, dist in self._distribution.items()
-        }
-        return
+        # compute the expected distances to each opponent according to the
+        # current distribution
+        expected = [
+            max(dist.items(), key=itemgetter(1))[0]
+            for dist in self._distribution.values()
+        ]
+        closest = min(
+            ((p, distancer.getDistance(pos, p)) for p in expected),
+            key=itemgetter(1)
+        )[0]
+        a = [
+            (a, gameState.generateSuccessor(index, a))
+            for a in gameState.getLegalActions(index)
+        ]
+        a = [
+            (a, successor)
+            for a, successor in a
+            if not successor.data.agentStates[index].isPacman
+        ]
+        a, _, s = min(
+            (
+                (
+                    a,
+                    distancer.getDistance(
+                        closest,
+                        successor.data.agentStates[index].configuration.pos
+                    ),
+                    successor
+                )
+                for a, successor in a
+            ),
+            key=itemgetter(1)
+        )
+
+        pos = s.data.agentStates[index].configuration.pos
+        for i in (gameState.blueTeam if self.red else gameState.redTeam):
+            conf = gameState.data.agentStates[i].configuration
+            initPos = gameState.data.layout.agentPositions[i][1]
+            if conf and conf.pos == pos:
+                self._notifyEaten(i, initPos)
+
+        return a
 
     def offenseAction(self, gameState):
         """
