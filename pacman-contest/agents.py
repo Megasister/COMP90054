@@ -1,4 +1,4 @@
-# mixins.py
+# agents.py
 # ---------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
@@ -10,6 +10,8 @@
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
+
+from __future__ import division, print_function
 from heapq import heappop, heappush
 from operator import itemgetter
 from time import time
@@ -28,6 +30,7 @@ from mixins import (
 #################
 # Team creation #
 #################
+agent1 = agent2 = None
 def createTeam(
     firstIndex,
     secondIndex,
@@ -35,7 +38,10 @@ def createTeam(
     first='DijkstraMonteCarloAgent',
     second='DefensiveReflexAgent'
 ):
-    return [eval(first)(firstIndex, isRed), eval(second)(secondIndex, isRed)]
+    global agent1, agent2
+    agent1 = eval(first)(firstIndex, isRed)
+    agent2 = eval(second)(secondIndex, isRed)
+    return [agent1, agent2]
 
 
 ################################################################################
@@ -152,112 +158,6 @@ class DefensiveGreedyAgent(EvalBaseMixin, InferenceMixin):
         ########################################################################
         features[3] = action == Directions.STOP
         return sum(f * w for f, w in zip(features, self._weights))
-
-
-class DijkstraMonteCarloAgent(CaptureAgent, object):
-    """
-    This is a class define an offensive agent which use A* to initiate an
-    optimal path to eat all food, and use Monte Carlo to escape from the chasers
-    if the chaser is within the visible range
-    """
-
-    def __init__(self, index, red, timeForComputing=.1):
-        CaptureAgent.__init__(self, index, timeForComputing)
-        object.__init__(self)
-
-        self.red = red
-        self._actions = None
-
-        self._prevCarry = 0
-
-    def registerInitialState(self, gameState):
-        """
-        Initialise the agent and compute an initial route
-        """
-        CaptureAgent.registerInitialState(self, gameState)
-
-        self._computeRoute(gameState)
-
-    def _computeRoute(self, gameState):
-        data = gameState.data
-        foods = data.food.data
-        layout = data.layout
-        height, width = layout.height, layout.width
-        half = width // 2
-        walls = layout.walls.data
-        red = self.red
-        bound = half - 1 if red else half
-        bounds = set(
-            (bound, y) for y in xrange(height) if not walls[bound][y]
-        )
-        foods = set(
-            (x, y)
-            for x in (xrange(half, width) if red else xrange(half))
-            for y in xrange(height)
-            if foods[x][y]
-        )
-        distancer = self.distancer
-
-        pos = data.agentStates[self.index].configuration.pos
-        path = []
-        q = [(0, pos, path, foods)]
-        while q:
-            dist, pos, path, fs = heappop(q)
-
-            if pos in bounds:
-                break
-
-            if fs:
-                npos, ndist = min(
-                    ((np, dist + distancer.getDistance(pos, np)) for np in fs),
-                    key=itemgetter(1)
-                )
-
-                nfs = fs.copy()
-                nfs.remove(npos)
-            else:
-                npos, ndist = min(
-                    (
-                        (np, dist + distancer.getDistance(pos, np))
-                        for np in bounds
-                    ),
-                    key=itemgetter(1)
-                )
-            heappush(q, (ndist, npos, path + [npos], nfs))
-        path.reverse()
-
-        self._actions = path
-
-    def chooseAction(self, gameState):
-        """
-        Choose an action based on current circumstance, could either be
-        * following the route
-        * escape if in danger
-        """
-        index = self.index
-        agentState = gameState.data.agentStates[index]
-
-        if self._prevCarry > agentState.numCarrying:
-            self._computeRoute(gameState)
-        self._prevCarry = agentState.numCarrying
-
-        actions = self._actions
-        if agentState.configuration.pos == actions[-1]:
-            actions.pop()
-        cdest = actions[-1]
-        distancer = self.distancer
-        return min(
-            (
-                (
-                    a,
-                    distancer.getDistance(gameState.generateSuccessor(
-                        index, a
-                    ).data.agentStates[index].configuration.pos, cdest)
-                )
-                for a in gameState.getLegalActions(index)
-            ),
-            key=itemgetter(1)
-        )[0]
 
 
 ################################################################################

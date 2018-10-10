@@ -143,7 +143,6 @@ class OffensiveMixin(object):
         return features
 
 
-
 class InferenceMixin(object):
     """
     Mixin for probability inference of positions of opponent agents
@@ -184,28 +183,28 @@ class InferenceMixin(object):
 
         # the initial position is visible
         agentStates = data.agentStates
-        red = self.red
+        oppo = initState.blueTeam if self.red else initState.redTeam
         self._distribution = {
-            i: {agentStates[i].configuration.pos: 1.0}
-            for i in (initState.blueTeam if red else initState.redTeam)
+            i: {tuple(map(int, agentStates[i].configuration.pos)): 1.0}
+            for i in oppo
         }
-
-        return self
 
     def _updateDistribution(self, gameState):
         agentDistances = gameState.agentDistances
         data = gameState.data
-        wall = data.layout.walls.data
+        layout = data.layout
+        wall = layout.walls.data
         agentStates = data.agentStates
         vp = self._validPos
         dist = {}
         pos = agentStates[self.index].configuration.pos
 
         for agent, adist in self._distribution.items():
-            conf = agentStates[agent].configuration
+            agentState = agentStates[agent]
+            conf = agentState.configuration
             # if the agent is visible
             if conf is not None:
-                dist[agent] = {conf.pos: 1.0}
+                dist[agent] = {tuple(map(int, conf.pos)): 1.0}
                 continue
 
             ndist = agentDistances[agent]
@@ -233,8 +232,6 @@ class InferenceMixin(object):
             tp = sum(nd.values())
             dist[agent] = {k: v / tp for k, v in nd.items() if v > 0}
         self._distribution = dist
-
-        return self
 
 
 class AbuseDelegate(object):
