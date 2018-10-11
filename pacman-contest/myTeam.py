@@ -28,7 +28,7 @@ def createTeam(
     secondIndex,
     isRed,
     first='OffensiveAgent',
-    second='OffensiveAgent'
+    second='DefensiveAgent'
 ):
     return [eval(first)(firstIndex, isRed), eval(second)(secondIndex, isRed)]
 
@@ -733,10 +733,7 @@ class atLeastDefensiveAgent(CaptureAgent):
 #work done by Lai
 #an agent that uses Q approximation which equals features*weight,
 #structure is similar to baseline.py
-#weights are updated but can be refined
-#last update 1/10/2018
-
-
+#last update 11/10/2018
 class OffensiveAgent(CaptureAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
@@ -871,6 +868,7 @@ class OffensiveAgent(CaptureAgent):
     else:
         self.goBack = False
     
+    #print self.goBack
     return features
 
   def getWeights(self, gameState, action):
@@ -887,6 +885,123 @@ class OffensiveAgent(CaptureAgent):
         return {'foodRemaining': 0, 'distanceToFood': -3, 'foodCarrying': 10,
             'distanceToGhost': 5, 'distanceToPacman': -6, 'distanceToCapsule': -2,
             'isPacman': 2, 'distanceToReturn' : -1, 'stuck': -50, 'successorScore': 1000,
-            'distanceToTeammate': 1}
+            'distanceToTeammate': 0}
     
+class DefensiveAgent(CaptureAgent):    
+    def registerInitialState(self, gameState):
+        self.start = gameState.getAgentPosition(self.index)
+        CaptureAgent.registerInitialState(self, gameState)
+        self.return_x = gameState.data.layout.width / 2
+        self.return_y = gameState.data.layout.height / 2
+        self.goBack = False
+        self.danger = False
+    def chooseAction(self, gameState):
+        """
+        Picks among the actions with the highest Q(s,a).
+        """
+        actions = gameState.getLegalActions(self.index)
+
+        # You can profile your evaluation time by uncommenting these lines
+        # start = time.time()
+        values = [self.evaluate(gameState, a) for a in actions]
+        # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
+        maxValue = max(values)
+        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+        return random.choice(bestActions)
+
+    def getSuccessor(self, gameState, action):
+        """
+        Finds the next successor which is a grid position (location tuple).
+        """
+        successor = gameState.generateSuccessor(self.index, action)
+        pos = successor.getAgentState(self.index).getPosition()
+        if pos != nearestPoint(pos):
+          # Only half a grid position was covered
+          return successor.generateSuccessor(self.index, action)
+        else:
+          return successor
+
+    def evaluate(self, gameState, action):
+        """
+        Computes a linear combination of features and feature weights
+        """
+        features = self.getFeatures(gameState, action)
+        weights = self.getWeights(gameState, action)
+        return features * weights
+
+    def getFeatures(self, gameState, action):
+        features = util.Counter()
+        successor = self.getSuccessor(gameState, action)
+        #successor pos
+        next_x, next_y =successor.getAgentState(self.index).getPosition()
+        
+        #number of remaining food on our side
+        food = self.getFoodYouAreDefending(gameState)
+        foodList = food.asList()
+        features['foodRemaining'] = len(foodList)
+    
+        #distance to the farthest food
+        if len(foodList) > 0:
+            #compute the minimum mazeDistance to food
+            maxFood = max([self.getMazeDistance((next_x, next_y), foodPos) for foodPos in foodList])
+            features['distanceToFood'] = maxFood
+    
+        #distance to the nearest enermy
+        enemies = [successor.getAgentState(a) for a in self.getOpponents(successor)]
+        ghosts = filter(lambda x: not x.isPacman and x.getPosition() != None, enemies)
+        pacmen = filter(lambda x: x.isPacman and x.getPosition() != None, enemies)
+    
+        #distance to the nearest ghost
+        if len(ghosts) > 0:
+            minGhost = min([self.getMazeDistance((next_x, next_y), ghost.getPosition()) for ghost in ghosts])
+            #ignore if enermy is scared
+            scaredTime = min([successor.getAgentState(ghost).scaredTimer for ghost in self.getOpponents(successor)])
+            if (scaredTime > 0): minGhost = 0
+            features['distanceToGhost'] = minGhost
+            if minGhost < 4:
+                self.danger = True;
+        else:
+            self.danger = False;
+    
+        #distance to the nearest pacman
+        if len(pacmen) > 0:
+            minPacman = min([self.getMazeDistance((next_x, next_y), pacman.getPosition()) for pacman in pacmen])
+            features['distanceToPacman'] = minPacman
+    
+        #distance to the nearest defending capsule
+        if self.red:
+            capsules = gameState.getBlueCapsules()
+        else:
+            capsules = gameState.getRedCapsules()
+    
+        if len(capsules) > 0:
+            #compute the minimum mazeDistance to capsule
+            minCapsule = min([self.getMazeDistance((next_x, next_y), capsulePos) for capsulePos in capsules])
+            features['distanceToCapsule'] = minCapsule
+    
+        #determine if is Pacman
+        features['isPacman'] = successor.getAgentState(self.index).isPacman
+    
+        #determine if is stuck
+        features['stuck'] = action == Directions.STOP
+
+        #score feature from baseline.py
+        features['successorScore'] = self.getScore(successor)
+    
+        #distance to teammate
+        team = [teammate for teammate in self.getTeam(successor) if teammate != self.index]
+        distanceToTeamate = min([self.getMazeDistance((next_x, next_y), successor.getAgentState(teammate).getPosition()) for teammate in team])
+        #ignore teammate if is already far away
+        #if (distanceToTeamate) > 10: distanceToTeamate = 0
+        features['distanceToTeammate'] = distanceToTeamate
+        
+        return features
+    
+    def getWeights(self, gameState, action):
+        return {'foodRemaining': 1000, 'distanceToFood': -3, 'foodCarrying': 0,
+            'distanceToGhost': 1, 'distanceToPacman': -1000, 'distanceToCapsule': -1,
+            'isPacman': -1, 'distanceToReturn' : 0, 'stuck': -50, 'successorScore': 1000,
+            'distanceToTeammate': 0}
+        
+        
     
