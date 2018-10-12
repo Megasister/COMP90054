@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ac82a224-8231-45f0-8131-7b396b092dc0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pacman-contest/dijkstra.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/dijkstra.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pacman-contest/dijkstra.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/trained.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -23,6 +22,7 @@
       <usages-collector id="statistics.lifecycle.project">
         <counts>
           <entry key="project.closed" value="10" />
+          <entry key="project.open.time.1" value="1" />
           <entry key="project.open.time.13" value="1" />
           <entry key="project.open.time.14" value="1" />
           <entry key="project.open.time.16" value="1" />
@@ -35,7 +35,7 @@
           <entry key="project.open.time.7" value="2" />
           <entry key="project.open.time.8" value="2" />
           <entry key="project.open.time.9" value="1" />
-          <entry key="project.opened" value="15" />
+          <entry key="project.opened" value="16" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -54,13 +54,13 @@
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="dummy" value="101" />
+          <entry key="dummy" value="110" />
           <entry key="py" value="33765" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="PLAIN_TEXT" value="101" />
+          <entry key="PLAIN_TEXT" value="110" />
           <entry key="Python" value="33765" />
         </counts>
       </usages-collector>
@@ -73,15 +73,10 @@
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
           <file pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/pacman-contest/dijkstra.py">
+            <entry file="file://$PROJECT_DIR$/pacman-contest/trained.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="938">
-                  <caret line="407" lean-forward="true" selection-start-line="407" selection-end-line="407" />
-                  <folding>
-                    <marker date="1539316910666" expanded="true" signature="12416:12419" ph="..." />
-                    <marker date="1539316910666" expanded="true" signature="13220:13229" ph="..." />
-                    <marker date="1539316910666" expanded="true" signature="15629:15635" ph="..." />
-                  </folding>
+                <state relative-caret-position="336">
+                  <caret line="99" column="56" lean-forward="true" selection-start-line="99" selection-start-column="56" selection-end-line="99" selection-end-column="56" />
                 </state>
               </provider>
             </entry>
@@ -129,7 +124,7 @@
           <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/pacman-contest/capture.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="224">
+                <state relative-caret-position="9216">
                   <caret line="576" column="12" lean-forward="true" selection-start-line="576" selection-start-column="12" selection-end-line="576" selection-end-column="12" />
                 </state>
               </provider>
@@ -305,7 +300,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.Test">
+  <component name="RunManager" selected="Python.Test Reverse">
     <configuration name="Test Baseline" type="PythonConfigurationType" factoryName="Python">
       <module name="comp90054-pacman" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -342,7 +337,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pacman-contest/capture.py" />
-      <option name="PARAMETERS" value="-r baselineTeam.py -b dijkstra.py" />
+      <option name="PARAMETERS" value="-r baselineTeam.py -b trained.py" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -364,7 +359,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pacman-contest/capture.py" />
-      <option name="PARAMETERS" value="-r dijkstra.py -b baselineTeam.py" />
+      <option name="PARAMETERS" value="-r trained.py -b baselineTeam.py" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -417,7 +412,7 @@
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.12846482" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.12953092" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -566,6 +561,13 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/pacman-contest/capture.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="9216">
+          <caret line="576" column="12" lean-forward="true" selection-start-line="576" selection-start-column="12" selection-end-line="576" selection-end-column="12" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/agents.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="272">
@@ -595,13 +597,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pacman-contest/capture.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="224">
-          <caret line="576" column="12" lean-forward="true" selection-start-line="576" selection-start-column="12" selection-end-line="576" selection-end-column="12" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/game.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="445">
@@ -609,15 +604,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pacman-contest/dijkstra.py">
+    <entry file="file://$PROJECT_DIR$/pacman-contest/trained.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="938">
-          <caret line="407" lean-forward="true" selection-start-line="407" selection-end-line="407" />
-          <folding>
-            <marker date="1539316910666" expanded="true" signature="12416:12419" ph="..." />
-            <marker date="1539316910666" expanded="true" signature="13220:13229" ph="..." />
-            <marker date="1539316910666" expanded="true" signature="15629:15635" ph="..." />
-          </folding>
+        <state relative-caret-position="336">
+          <caret line="99" column="56" lean-forward="true" selection-start-line="99" selection-start-column="56" selection-end-line="99" selection-end-column="56" />
         </state>
       </provider>
     </entry>
