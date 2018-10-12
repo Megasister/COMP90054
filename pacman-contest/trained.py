@@ -85,7 +85,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         self._instances[index // 2] = self
 
         lc = self._lc = 3
-        fc = self._fc = 75
+        fc = self._fc = 66
 
         try:
             self._omodel = [
@@ -94,6 +94,10 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             ]
             self._dmodel = [
                 (np.load("dweight%d.py" % i), np.load("dbias%d.py" % i))
+                for i in range(lc)
+            ]
+            self._fmodel = [
+                (np.load("fweight%d.py" % i), np.load("fbias%d.py" % i))
                 for i in range(lc)
             ]
         except:
@@ -110,8 +114,8 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                     npr.random((fc, fc)) + factor2
                 ),
                 (
-                    npr.random((fc, 4)) + 1 + factor3,
-                    npr.random((fc, 4)) + factor3
+                    npr.random((fc, 5)) + 1 + factor3,
+                    npr.random((fc, 5)) + factor3
                 )
             ]
             self._dmodel = [
@@ -124,8 +128,20 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                     npr.random((fc, fc)) + factor2
                 ),
                 (
-                    npr.random((fc, 4)) + 1 + factor3,
-                    npr.random((fc, 4)) + factor3
+                    npr.random((fc, 5)) + 1 + factor3,
+                    npr.random((fc, 5)) + factor3
+                )
+            ]
+            factor4 = npr.randint(-2, 1, (8, 8))
+            factor5 = npr.randint(-2, 1, (8, 4))
+            self._fmodel = [
+                (
+                    npr.random((8, 8)) + 1 + factor4,
+                    npr.random((8, 8)) + factor4
+                ),
+                (
+                    npr.random((8, 4)) + 1 + factor5,
+                    npr.random((8, 2)) + factor5
                 )
             ]
 
@@ -164,6 +180,9 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             for i, (weight, bias) in enumerate(self._dmodel):
                 np.save("dweight%d" % i, weight)
                 np.save("dbias%d" % i, bias)
+            for i, (weight, bias) in enumerate(self._fmodel):
+                np.save("fweight%d" % i, weight)
+                np.save("fbias%d" % i, bias)
 
     def _computeRoute(self, gameState):
         data = gameState.data
@@ -232,43 +251,73 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         """
         Choose a defensive action
         """
-        index = self.index
-        red = self.red
-        data = gameState.data
-        agentStates = data.agentStates
-        agentState = agentStates[index]
-        pos = agentState.configuration.pos
-        distancer = self.distancer
 
-        # obtain the states of opponent agents
-        states = [
-            agentStates[i]
-            for i in (gameState.blueTeam if red else gameState.redTeam)
-        ]
-        vals = [(s.numCarrying, s.configuration.pos) for s in states]
-        p = min(((-c, distancer.getDistance(pos, p), p) for c, p in vals))[2]
-        a = [
-            (a, gameState.generateSuccessor(index, a))
-            for a in gameState.getLegalActions(index)
-        ]
-        a = [
-            (a, successor)
-            for a, successor in a
-            if not successor.data.agentStates[index].isPacman
-        ]
+    def _extractNear(self, pos, layout, agentStates, oppo):
+        height = layout.height
+        width = layout.width
+        half = width // 2
+        print(layout, height, width)
+        x, y = pos
+        lx, ly, rx, ry = x - 5, y - 5, x + 5, y + 5
+        print(lx, ly, rx, ry)
+        blx = lx if lx > 0 else 0
+        bly = ly if ly > 0 else 0
+        brx = rx if rx < width else width - 1
+        bry = ry if ry < height else height - 1
+        print(blx, bly, brx, bry)
+        lx = blx - lx
+        ly = bly - ly
+        rx -= brx
+        ry -= bry
+        print(lx, ly, rx, ry)
 
-        return min(
-            (
-                (
-                    a, distancer.getDistance(
-                        successor.data.agentStates[index].configuration.pos,
-                        p
-                    )
-                )
-                for a, successor in a
-            ),
-            key=itemgetter(1)
-        )[0]
+        foods = np.array(layout.food.data, np.bool)
+        print(foods)
+        tmp = foods.copy()
+        tmp[:, :half] = False
+        print(tmp)
+        tfood = np.zeros((11, 11), np.bool)
+        tfood[ly:-ry, lx:-rx] = tmp[bly:-bry, blx:-brx]
+        print(tfood)
+        tmp = foods.copy()
+        tmp[:, half:] = False
+        print(tmp)
+        ofood = np.zeros((11, 11), np.bool)
+        ofood[ly:-ry, lx:-rx] = tmp[bly:-bry, blx:-brx]
+        print(ofood)
+
+        capsules = np.zeros_like(foods, np.bool)
+        capsules[zip(*layout.capsules)] = True
+        tmp = capsules.copy()
+        tmp[:, :half] = False
+        print(tmp)
+        tcapsule = np.zeros((11, 11), np.bool)
+        tcapsule[ly:-ry, lx:-rx] = tmp[bly:-bry, blx:-brx]
+        print(tcapsule)
+        tmp = capsules.copy()
+        tmp[:, half:] = False
+        print(tmp)
+        ocapsule = np.zeros((11, 11), np.bool)
+        ocapsule[ly:-ry, lx:-rx] = tmp[bly:-bry, blx:-brx]
+        print(ocapsule)
+
+        agentPos = [agentStates[i].configuration.pos for i in oppo]
+        enemies = np.zeros_like(foods, np.bool)
+        enemies[zip(*agentPos)] = True
+        tmp = enemies.copy()
+        tmp[:, :half] = False
+        print(tmp)
+        tcapsule = np.zeros((11, 11), np.bool)
+        tcapsule[ly:-ry, lx:-rx] = tmp[bly:-bry, blx:-brx]
+        print(tcapsule)
+        tmp = capsules.copy()
+        tmp[:, half:] = False
+        print(tmp)
+        ocapsule = np.zeros((11, 11), np.bool)
+        ocapsule[ly:-ry, lx:-rx] = tmp[bly:-bry, blx:-brx]
+        print(ocapsule)
+
+        exit()
 
     def _extractOffensive(self, gameState):
         fs = np.zeros((1, self._fc), np.float64)
