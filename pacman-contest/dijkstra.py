@@ -11,14 +11,22 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
+################################################################################
+# Imports
+################################################################################
 from __future__ import division, print_function
-
-import random
-
 from baselineTeam import DefensiveReflexAgent
 from heapq import heappop, heappush, heapify, nsmallest
 from operator import itemgetter, add
 from captureAgents import CaptureAgent
+import numpy as np
+import numpy.random as npr
+
+################################################################################
+# Constants
+################################################################################
+TRAIN = True
+ETA = 0.1
 
 
 #################
@@ -42,347 +50,17 @@ def createTeam(
     ]
 
 
-# helper function to perform element-wise addition on two lists
-def _sum_list(x, y):
-    return map(add, x, y)
+################################################################################
+# Helper Function
+################################################################################
+def _applyKernel(accum, kernel):
+    weight, bias = kernel
+    return accum.dot(weight) + bias
 
 
 ################################################################################
-# Mixed Agents
+# Agent
 ################################################################################
-class DijkstraMonteCarloAgent(CaptureAgent, object):
-    """
-    This is a class define an offensive agent which use A* to initiate an
-    optimal path to eat all food, and use Monte Carlo to escape from the chasers
-    if the chaser is within the visible range
-    """
-
-    _DIRECTION = (
-        (0, 1),
-        (1, 0),
-        (0, -1),
-        (-1, 0)
-    )
-
-    _distribution = _validPos = None
-    _initialised = False
-
-    @classmethod
-    def _validMove(cls, pos, wall):
-        x, y = pos
-        # a STOP is possible
-        ds = cls._DIRECTION
-        return [pos] + [
-            (x + dx, y + dy)
-            for dx, dy in ds
-            if not wall[x + dx][y + dy]
-        ]
-
-    _instances = [None, None]
-    _computed = False
-
-    def __init__(self, index, red, defense, timeForComputing=.1):
-        CaptureAgent.__init__(self, index, timeForComputing)
-        object.__init__(self)
-
-        self.red = red
-        self._defense = defense
-        self._bound = self._actions = None
-        self._prevCarry = 0
-
-        # record each instance created
-        self._instances[index // 2] = self
-        self._teammate = (index // 2 + 1) % 2
-
-    def registerInitialState(self, gameState):
-        """
-        Initialise the agent and compute an initial route
-        """
-        CaptureAgent.registerInitialState(self, gameState)
-
-        data = gameState.data
-        layout = data.layout
-        height, width = layout.height, layout.width
-        half = width // 2
-        red = self.red
-        bound = half - 1 if red else half
-        walls = layout.walls
-        self._bound = set(
-            (bound, y) for y in xrange(height) if not walls[bound][y]
-        )
-
-        self._initialise(gameState, red)
-
-        # only offensive agent needs to compute the route
-        if not self._defense:
-            self._computeRoute(gameState)
-
-    def _computeRoute(self, gameState):
-        data = gameState.data
-        foods = data.food.data
-        height, width, half = self._height, self._width, self._half
-        red = self.red
-        # deliver the food to the bound to gain actual score
-        bounds = self._bound
-        foods = set(
-            (x, y)
-            for x in (xrange(half, width) if red else xrange(half))
-            for y in xrange(height)
-            if foods[x][y]
-        )
-        distancer = self.distancer
-
-        # Dijkstra (or variant of Uniform Cost Search) implementation
-        pos = data.agentStates[self.index].configuration.pos
-        path = []
-        q = [(0, pos, path, foods)]
-        while q:
-            dist, pos, path, fs = heappop(q)
-
-            if pos in bounds:
-                break
-
-            if fs:
-                npos, ndist = min(
-                    ((np, dist + distancer.getDistance(pos, np)) for np in fs),
-                    key=itemgetter(1)
-                )
-
-                nfs = fs.copy()
-                nfs.remove(npos)
-                heappush(q, (ndist, npos, path + [npos], nfs))
-            else:
-                npos, ndist = min(
-                    (
-                        (np, dist + distancer.getDistance(pos, np))
-                        for np in bounds
-                    ),
-                    key=itemgetter(1)
-                )
-                heappush(q, (ndist, npos, path + [npos], None))
-        # reverse the path to utilise the efficiency of list.pop
-        path.reverse()
-
-        self._actions = path
-
-    @classmethod
-    def _initialise(cls, initState, red):
-        if cls._initialised:
-            return
-
-        # initialise all valid positions with the given wall configuration
-        data = initState.data
-        wall = data.layout.walls
-        height, width = wall.height, wall.width
-        wall = data.layout.walls.data
-        cls._validPos = [
-            (x, y)
-            for x in xrange(width)
-            for y in xrange(height)
-            if not wall[x][y]
-        ]
-
-        # the initial position is visible
-        agentStates = data.agentStates
-        cls._distribution = {
-            i: {tuple(map(int, agentStates[i].configuration.pos)): 1.0}
-            for i in (initState.blueTeam if red else initState.redTeam)
-        }
-
-        cls._initialised = True
-
-    def _notifyDeath(self):
-        # TODO: notify the teammate the death of the current agent
-        pass
-
-    def _roleChange(self):
-        # TODO: return a boolean value to indicate if current role change
-        pass
-
-    def _nextDistribution(self, gameState):
-        agentDistances = gameState.agentDistances
-        data = gameState.data
-        layout = data.layout
-        wall = layout.walls.data
-        agentStates = data.agentStates
-        vp = self._validPos
-        dist = {}
-        pos = agentStates[self.index].configuration.pos
-        print("--------", self._distribution)
-
-        for agent, adist in self._distribution.items():
-            agentState = agentStates[agent]
-            conf = agentState.configuration
-            # if the agent is visible
-            if conf is not None:
-                pos = tuple(map(int, conf.pos))
-                dist[agent] = {pos: 1.0}
-                self._instances[self._teammate]._distribution[agent] = {
-                    pos: 1.0
-                }
-                continue
-
-            ndist = agentDistances[agent]
-            print("--------", ndist)
-            nd = {}
-            # find all valid positions according to the noisy distance
-            ps = [p for p in vp if -7 < manhattanDistance(pos, p) - ndist < 7]
-            # iterate over all existing positions
-            for k, v in adist.items():
-                # generate all valid positions after possible move
-                vm = self._validMove(k, wall)
-                # count the number of valid points for each of the possible
-                # position after movement
-                cp = reduce(_sum_list, ([
-                    manhattanDistance(m, p) < 7 for m in vm
-                ] for p in ps))
-                scp = sum(cp)
-                # normalise to get a vector of probabilities to redistribute the
-                # probability
-                if scp != 0:
-                    cp = [c / scp for c in cp]
-                for m, p in zip(vm, cp):
-                    nd[m] = nd.get(m, 0) + v * p
-
-            # remove all zero probability and normalise the probability
-            tp = sum(nd.values())
-            dist[agent] = {k: v / tp for k, v in nd.items() if v > 0}
-        self._distribution = dist
-
-    def chooseAction(self, gameState):
-        """
-        Choose an action based on the current status of the agent
-        """
-        self._nextDistribution(gameState)
-        print("====", self.index)
-        print(self._distribution)
-
-        return self.defenseAction(gameState) \
-            if self._defense \
-            else self.offenseAction(gameState)
-
-    def defenseAction(self, gameState):
-        """
-        Choose a defensive action
-        """
-        index = self.index
-        data = gameState.data
-        agentStates = data.agentStates
-        agentState = agentStates[index]
-        pos = agentState.configuration.pos
-        distancer = self.distancer
-
-        # compute the expected distances to each opponent according to the
-        # current distribution
-        expected = [
-            (k, max(dist.items(), key=itemgetter(1))[0])
-            for k, dist in self._distribution.items()
-        ]
-        closest = min(
-            (
-                # try to reach the closest agent and select the one carrying
-                # more food if ties
-                (p, distancer.getDistance(pos, p), agentStates[k].numCarrying)
-                for k, p in expected
-            ),
-            key=itemgetter(1, 2)
-        )[0]
-        # generate state for each successor
-        a = [
-            (a, gameState.generateSuccessor(index, a))
-            for a in gameState.getLegalActions(index)
-        ]
-        # filter out the state where the agent has crossed the bound
-        a = [
-            (a, successor)
-            for a, successor in a
-            if not successor.data.agentStates[index].isPacman
-        ]
-        a, _, s = min(
-            (
-                (
-                    a,
-                    distancer.getDistance(
-                        closest,
-                        successor.data.agentStates[index].configuration.pos
-                    ),
-                    successor
-                )
-                for a, successor in a
-            ),
-            key=itemgetter(1)
-        )
-
-        pos = s.data.agentStates[index].configuration.pos
-        print("----", pos)
-        for i in self._oppo:
-            conf = agentStates[i].configuration
-            initPos = data.layout.agentPositions[i][1]
-            if conf:
-                print("----", i, conf.pos)
-                if conf.pos == pos:
-                    self._notifyEaten(i, initPos)
-
-        return a
-
-    def offenseAction(self, gameState):
-        """
-        Choose an offensive action based on current circumstance, could either
-        be the followings
-        * following the route
-        * escape if in danger
-        """
-        index = self.index
-        agentState = gameState.data.agentStates[index]
-
-        if self._prevCarry > agentState.numCarrying:
-            self._computeRoute(gameState)
-        self._prevCarry = agentState.numCarrying
-
-        distancer = self.distancer
-        actions = self._actions
-        if agentState.configuration.pos == actions[-1]:
-            actions.pop()
-        cdest = actions[-1]
-        return min(
-            (
-                (
-                    a,
-                    distancer.getDistance(gameState.generateSuccessor(
-                        index, a
-                    ).data.agentStates[index].configuration.pos, cdest)
-                )
-                for a in gameState.getLegalActions(index)
-            ),
-            key=itemgetter(1)
-        )[0]
-
-
-def MCTS(index, gameState, evaluate, depth=20, count=100):
-    """
-    Monte Carlo Tree Search
-    """
-    actions = gameState.getLegalActions(index)
-    wins = [0] * len(actions)
-    for i, action in enumerate(actions):
-        for c in xrange(count):
-            ind, d = index, depth
-            prevScore = -float("inf")
-            successor = gameState.generateSuccessor(ind, action)
-            score = evaluate(successor)
-            while score >= prevScore and d > 1:
-                prevScore = score
-                ind = (ind + 1) % 4
-                successor = successor.generateSuccessor(
-                    ind, random.choice(successor.getLegalActions(ind))
-                )
-                score = evaluate(successor)
-                d -= 1
-            wins[i] += score > prevScore
-    ms = max(wins)
-    return random.choice([a for a, s in zip(actions, wins) if s == ms])
-
-
 class AbuseMonteCarloAgent(CaptureAgent, object):
     """
     This is a class define an offensive agent which use A* to initiate an
@@ -406,6 +84,51 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         # record each instance created
         self._instances[index // 2] = self
 
+        lc = self._lc = 3
+        fc = self._fc = 75
+
+        try:
+            self._omodel = [
+                (np.load("oweight%d.py" % i), np.load("obias%d.py" % i))
+                for i in range(lc)
+            ]
+            self._dmodel = [
+                (np.load("dweight%d.py" % i), np.load("dbias%d.py" % i))
+                for i in range(lc)
+            ]
+        except:
+            factor1 = npr.randint(-11, 10, (5 * fc, fc))
+            factor2 = npr.randint(-11, 10, (fc, fc))
+            factor3 = npr.randint(-11, 10, (fc, 4))
+            self._omodel = [
+                (
+                    npr.random((5 * fc, fc)) + 1 + factor1,
+                    npr.random((5 * fc, fc)) + factor1
+                ),
+                (
+                    npr.random((fc, fc)) + 1 + factor2,
+                    npr.random((fc, fc)) + factor2
+                ),
+                (
+                    npr.random((fc, 4)) + 1 + factor3,
+                    npr.random((fc, 4)) + factor3
+                )
+            ]
+            self._dmodel = [
+                (
+                    npr.random((5 * fc, fc)) + 1 + factor1,
+                    npr.random((5 * fc, fc)) + factor1
+                ),
+                (
+                    npr.random((fc, fc)) + 1 + factor2,
+                    npr.random((fc, fc)) + factor2
+                ),
+                (
+                    npr.random((fc, 4)) + 1 + factor3,
+                    npr.random((fc, 4)) + factor3
+                )
+            ]
+
     def registerInitialState(self, gameState):
         """
         Initialise the agent and compute an initial route
@@ -427,6 +150,20 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         # only offensive agent needs to compute the route
         if not self._defense:
             self._computeRoute(gameState)
+
+    def final(self, gameState):
+        """
+        Receive final game state
+        """
+        CaptureAgent.final(self, gameState)
+
+        if TRAIN:
+            for i, (weight, bias) in enumerate(self._omodel):
+                np.save("oweight%d" % i, weight)
+                np.save("obias%d" % i, bias)
+            for i, (weight, bias) in enumerate(self._dmodel):
+                np.save("dweight%d" % i, weight)
+                np.save("dbias%d" % i, bias)
 
     def _computeRoute(self, gameState):
         data = gameState.data
@@ -533,50 +270,53 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             key=itemgetter(1)
         )[0]
 
-    def _evalOffense(self, gameState):
-        fs = [0] * 6
+    def _extractOffensive(self, gameState):
+        fs = np.zeros((1, self._fc), np.float64)
 
+        red = self.red
+        if red:
+            team = gameState.redTeam
+            oppo = gameState.blueTeam
+        else:
+            team = gameState.blueTeam
+            oppo = gameState.redTeam
         data = gameState.data
         agentStates = data.agentStates
         agent = agentStates[self.index]
         pos = agent.configuration.pos
-        maxDist = self._height * self._width
-        distancer = self.distancer
+
+        fs[0] = sum(agentStates[i].scaredTimer > 0 for i in oppo)
+
+        return fs
+
+    def _extractDefensive(self, gameState):
+        fs = np.zeros((1, self._fc), np.float64)
+
         red = self.red
+        if red:
+            team = gameState.redTeam
+            oppo = gameState.blueTeam
+        else:
+            team = gameState.blueTeam
+            oppo = gameState.redTeam
+        data = gameState.data
+        agentStates = data.agentStates
+        agent = agentStates[self.index]
+        pos = agent.configuration.pos
 
-        # current score
-        fs[0] = data.score
+        fs[0] = sum(agentStates[i].scaredTimer > 0 for i in team)
 
-        for i in gameState.redTeam:
-            agentState = agentStates[i]
-            if red:
-                # the number of food carried
-                fs[1] += agentState.numCarrying
-            else:
-                if agent.isPacman and agentState.scaredTimer == 0:
-                    fs[2] += maxDist - distancer.getDistance(
-                        pos, agentState.configuration.pos
-                    )
-                if agentState.scaredTimer > 0:
-                    fs[4] += 1
-        for i in gameState.blueTeam:
-            agentState = agentStates[i]
-            if red:
-                if agent.isPacman and agentState.scaredTimer == 0:
-                    fs[2] += maxDist - distancer.getDistance(
-                        pos, agentState.configuration.pos
-                    )
-                if agentState.scaredTimer > 0:
-                    fs[4] += 1
-            else:
-                fs[1] += agentState.numCarrying
+        return fs
 
-        fs[3] = len(gameState.getLegalActions()) - 1
+    def _predict(self, gameState, defensive):
+        if defensive:
+            model = self._dmodel
+            fs = self._extractDefensive(gameState)
+        else:
+            model = self._omodel
+            fs = self._extractOffensive(gameState)
 
-        fs[5] = agent.isPacman
-
-        weights = [maxDist, maxDist / 2, -2, 1, maxDist]
-        return sum(f * w for f, w in zip(fs, weights))
+        return reduce(_applyKernel, model, fs)
 
     def offenseAction(self, gameState):
         """
@@ -599,7 +339,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         if any(
             not s.isPacman and s.scaredTimer == 0 and distancer.getDistance(
                 s.configuration.pos, pos
-            ) < 5
+            ) < 6
             for s in states
         ):
             self._recompute = True
