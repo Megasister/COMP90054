@@ -14,10 +14,9 @@
 from __future__ import division, print_function
 
 import random
+from heapq import heappop, heappush
+from operator import add, itemgetter
 
-from baselineTeam import DefensiveReflexAgent
-from heapq import heappop, heappush, heapify, nsmallest
-from operator import itemgetter, add
 from captureAgents import CaptureAgent
 
 
@@ -26,7 +25,6 @@ from captureAgents import CaptureAgent
 #################
 from distanceCalculator import manhattanDistance
 from game import Directions
-from mixins import InferenceMixin
 
 
 def createTeam(
@@ -358,11 +356,12 @@ class DijkstraMonteCarloAgent(CaptureAgent, object):
         )[0]
 
 
-def MCTS(index, gameState, evaluate, depth=20, count=100):
+def MonteCarlo(index, gameState, evaluate, depth=40, count=100):
     """
     Monte Carlo Tree Search
     """
     actions = gameState.getLegalActions(index)
+    actions.remove(Directions.STOP)
     wins = [0] * len(actions)
     for i, action in enumerate(actions):
         for c in xrange(count):
@@ -373,8 +372,10 @@ def MCTS(index, gameState, evaluate, depth=20, count=100):
             while score >= prevScore and d > 1:
                 prevScore = score
                 ind = (ind + 1) % 4
+                act = successor.getLegalActions(ind)
+                act.remove(Directions.STOP)
                 successor = successor.generateSuccessor(
-                    ind, random.choice(successor.getLegalActions(ind))
+                    ind, random.choice(act)
                 )
                 score = evaluate(successor)
                 d -= 1
@@ -550,11 +551,10 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         for i in gameState.redTeam:
             agentState = agentStates[i]
             if red:
-                # the number of food carried
                 fs[1] += agentState.numCarrying
             else:
                 if agent.isPacman and agentState.scaredTimer == 0:
-                    fs[2] += maxDist - distancer.getDistance(
+                    fs[2] += distancer.getDistance(
                         pos, agentState.configuration.pos
                     )
                 if agentState.scaredTimer > 0:
@@ -563,7 +563,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             agentState = agentStates[i]
             if red:
                 if agent.isPacman and agentState.scaredTimer == 0:
-                    fs[2] += maxDist - distancer.getDistance(
+                    fs[2] += distancer.getDistance(
                         pos, agentState.configuration.pos
                     )
                 if agentState.scaredTimer > 0:
@@ -571,11 +571,45 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             else:
                 fs[1] += agentState.numCarrying
 
-        fs[3] = len(gameState.getLegalActions()) - 1
+        fs[3] = len(gameState.getLegalActions(self.index))
 
         fs[5] = agent.isPacman
 
-        weights = [maxDist, maxDist / 2, -2, 1, maxDist]
+        weights = [maxDist * 2, 2, 2, 1, 1, maxDist]
+        return sum(f * w for f, w in zip(fs, weights))
+
+    def _evalDefense(self, gameState):
+        fs = [0] * 5
+
+        data = gameState.data
+        agentStates = data.agentStates
+        agent = agentStates[self.index]
+        pos = agent.configuration.pos
+        distancer = self.distancer
+        red = self.red
+
+        for i in gameState.redTeam:
+            agentState = agentStates[i]
+            if red:
+                if agentState.isPacman and agent.scaredTimer == 0:
+                    fs[2] += distancer.getDistance(
+                        pos, agentState.configuration.pos
+                    )
+            else:
+                fs[1] += agentState.numCarrying
+                fs[3] = len(gameState.getLegalActions(i))
+        for i in gameState.blueTeam:
+            agentState = agentStates[i]
+            if red:
+                fs[1] += agentState.numCarrying
+                fs[3] = len(gameState.getLegalActions(i))
+            else:
+                if agentState.isPacman and agent.scaredTimer == 0:
+                    fs[2] += distancer.getDistance(
+                        pos, agentState.configuration.pos
+                    )
+
+        weights = [200, 2, 2, 1, 1]
         return sum(f * w for f, w in zip(fs, weights))
 
     def offenseAction(self, gameState):
@@ -599,12 +633,12 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         if any(
             not s.isPacman and s.scaredTimer == 0 and distancer.getDistance(
                 s.configuration.pos, pos
-            ) < 5
+            ) < 6
             for s in states
         ):
             self._recompute = True
             self._prevCarry = agentState.numCarrying
-            return MCTS(index, gameState, self._evalOffense)
+            return MonteCarlo(index, gameState, self._evalOffense)
 
         if self._recompute or self._prevCarry > agentState.numCarrying:
             self._computeRoute(gameState)
