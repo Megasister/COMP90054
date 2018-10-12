@@ -358,29 +358,29 @@ class DijkstraMonteCarloAgent(CaptureAgent, object):
         )[0]
 
 
-def MCTS(index, gameState, evaluate, depth=20, count=50):
+def MCTS(index, gameState, evaluate, depth=20, count=100):
     """
     Monte Carlo Tree Search
     """
     actions = gameState.getLegalActions(index)
-    scores = [0] * len(actions)
+    wins = [0] * len(actions)
     for i, action in enumerate(actions):
         for c in xrange(count):
             ind, d = index, depth
+            prevScore = -float("inf")
             successor = gameState.generateSuccessor(ind, action)
-            if not successor.isOver():
-                while d > 1:
-                    ind = (ind + 1) % 4
-                    successor = successor.generateSuccessor(
-                        ind, random.choice(successor.getLegalActions(ind))
-                    )
-                    if successor.isOver():
-                        break
-                    d -= 1
-            scores[i] += evaluate(gameState, successor)
-    print(scores)
-    ms = max(scores)
-    return random.choice([a for a, s in zip(actions, scores) if s == ms])
+            score = evaluate(successor)
+            while score >= prevScore and d > 1:
+                prevScore = score
+                ind = (ind + 1) % 4
+                successor = successor.generateSuccessor(
+                    ind, random.choice(successor.getLegalActions(ind))
+                )
+                score = evaluate(successor)
+                d -= 1
+            wins[i] += score > prevScore
+    ms = max(wins)
+    return random.choice([a for a, s in zip(actions, wins) if s == ms])
 
 
 class AbuseMonteCarloAgent(CaptureAgent, object):
@@ -533,25 +533,50 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             key=itemgetter(1)
         )[0]
 
-    def _eval(self, gameState):
-        features = [0] * 5
+    def _evalOffense(self, gameState):
+        fs = [0] * 6
 
         data = gameState.data
-        distancer = self.distancer
-        features[0] = data.score
-
         agentStates = data.agentStates
+        agent = agentStates[self.index]
+        pos = agent.configuration.pos
+        maxDist = self._height * self._width
+        distancer = self.distancer
+        red = self.red
+
+        # current score
+        fs[0] = data.score
+
         for i in gameState.redTeam:
             agentState = agentStates[i]
-            features[1] = agentState.numCarrying
-            features[2] = agentState.isPacman * agentState.scaredTimer
+            if red:
+                # the number of food carried
+                fs[1] += agentState.numCarrying
+            else:
+                if agent.isPacman and agentState.scaredTimer == 0:
+                    fs[2] += maxDist - distancer.getDistance(
+                        pos, agentState.configuration.pos
+                    )
+                if agentState.scaredTimer > 0:
+                    fs[4] += 1
         for i in gameState.blueTeam:
             agentState = agentStates[i]
-            features[3] = agentState.numCarrying
-            features[4] = agentState.isPacman * agentState.scaredTimer
+            if red:
+                if agent.isPacman and agentState.scaredTimer == 0:
+                    fs[2] += maxDist - distancer.getDistance(
+                        pos, agentState.configuration.pos
+                    )
+                if agentState.scaredTimer > 0:
+                    fs[4] += 1
+            else:
+                fs[1] += agentState.numCarrying
 
-        weights = [1, 1, 1, -1, -1]
-        return sum(f * w for f, w in zip(features, weights))
+        fs[3] = len(gameState.getLegalActions()) - 1
+
+        fs[5] = agent.isPacman
+
+        weights = [maxDist, maxDist / 2, -2, 1, maxDist]
+        return sum(f * w for f, w in zip(fs, weights))
 
     def offenseAction(self, gameState):
         """
@@ -578,7 +603,8 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             for s in states
         ):
             self._recompute = True
-            return MCTS(index, gameState, self._eval)
+            self._prevCarry = agentState.numCarrying
+            return MCTS(index, gameState, self._evalOffense)
 
         if self._recompute or self._prevCarry > agentState.numCarrying:
             self._computeRoute(gameState)

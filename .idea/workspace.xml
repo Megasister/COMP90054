@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ac82a224-8231-45f0-8131-7b396b092dc0" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pacman-contest/dijkstra.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/dijkstra.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -13,7 +14,7 @@
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Reverse.coverage" NAME="Test Reverse Coverage Results" MODIFIED="1539127751391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Baseline.coverage" NAME="Test Baseline Coverage Results" MODIFIED="1538099660797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
-    <SUITE FILE_PATH="coverage/comp90054_pacman$Test.coverage" NAME="Test Coverage Results" MODIFIED="1539178568001" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
+    <SUITE FILE_PATH="coverage/comp90054_pacman$Test.coverage" NAME="Test Coverage Results" MODIFIED="1539316912476" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_MyTeam.coverage" NAME="Test MyTeam Coverage Results" MODIFIED="1538964636252" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_testTeam.coverage" NAME="Test testTeam Coverage Results" MODIFIED="1539089256222" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
   </component>
@@ -21,18 +22,20 @@
     <session id="71168356">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="8" />
+          <entry key="project.closed" value="10" />
+          <entry key="project.open.time.13" value="1" />
           <entry key="project.open.time.14" value="1" />
           <entry key="project.open.time.16" value="1" />
+          <entry key="project.open.time.18" value="1" />
           <entry key="project.open.time.19" value="1" />
           <entry key="project.open.time.22" value="2" />
           <entry key="project.open.time.25" value="1" />
           <entry key="project.open.time.29" value="1" />
           <entry key="project.open.time.5" value="1" />
           <entry key="project.open.time.7" value="2" />
-          <entry key="project.open.time.8" value="1" />
+          <entry key="project.open.time.8" value="2" />
           <entry key="project.open.time.9" value="1" />
-          <entry key="project.opened" value="12" />
+          <entry key="project.opened" value="15" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -52,13 +55,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="101" />
-          <entry key="py" value="32780" />
+          <entry key="py" value="33765" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="101" />
-          <entry key="Python" value="32780" />
+          <entry key="Python" value="33765" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.js.language.service.starts" />
@@ -69,24 +72,15 @@
     <splitter split-orientation="horizontal" split-proportion="0.5">
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="272">
-                  <caret line="17" column="29" selection-start-line="17" selection-start-column="29" selection-end-line="17" selection-end-column="29" />
-                </state>
-              </provider>
-            </entry>
-          </file>
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/dijkstra.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="368">
-                  <caret line="364" column="46" lean-forward="true" selection-start-line="364" selection-start-column="46" selection-end-line="364" selection-end-column="46" />
+                <state relative-caret-position="938">
+                  <caret line="407" lean-forward="true" selection-start-line="407" selection-end-line="407" />
                   <folding>
-                    <marker date="1539212426782" expanded="true" signature="12411:12414" ph="..." />
-                    <marker date="1539212426782" expanded="true" signature="13215:13224" ph="..." />
-                    <marker date="1539212426782" expanded="true" signature="15624:15630" ph="..." />
+                    <marker date="1539316910666" expanded="true" signature="12416:12419" ph="..." />
+                    <marker date="1539316910666" expanded="true" signature="13220:13229" ph="..." />
+                    <marker date="1539316910666" expanded="true" signature="15629:15635" ph="..." />
                   </folding>
                 </state>
               </provider>
@@ -105,11 +99,11 @@
               </provider>
             </entry>
           </file>
-          <file pinned="false" current-in-tab="false">
+          <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/game.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="9792">
-                  <caret line="612" selection-start-line="612" selection-end-line="612" />
+                <state relative-caret-position="445">
+                  <caret line="119" column="16" selection-start-line="119" selection-start-column="6" selection-end-line="119" selection-end-column="16" />
                 </state>
               </provider>
             </entry>
@@ -132,11 +126,11 @@
               </provider>
             </entry>
           </file>
-          <file pinned="false" current-in-tab="true">
+          <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/pacman-contest/capture.py">
               <provider selected="true" editor-type-id="text-editor">
                 <state relative-caret-position="224">
-                  <caret line="551" column="32" selection-start-line="551" selection-start-column="26" selection-end-line="551" selection-end-column="32" />
+                  <caret line="576" column="12" lean-forward="true" selection-start-line="576" selection-start-column="12" selection-end-line="576" selection-end-column="12" />
                 </state>
               </provider>
             </entry>
@@ -157,7 +151,7 @@
             <entry file="file://$PROJECT_DIR$/pacman-contest/mixins.py">
               <provider selected="true" editor-type-id="text-editor">
                 <state relative-caret-position="2688">
-                  <caret line="168" lean-forward="true" selection-start-line="168" selection-end-line="168" />
+                  <caret line="168" selection-start-line="168" selection-end-line="168" />
                   <folding>
                     <marker date="1539159837486" expanded="true" signature="674:679" ph="..." />
                     <marker date="1539159837486" expanded="true" signature="1525:1528" ph="..." />
@@ -182,7 +176,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>GameStateData</find>
       <find>GameState</find>
       <find>self.display</find>
       <find>scoreChange</find>
@@ -212,6 +205,7 @@
       <find>_teammate</find>
       <find>scoe</find>
       <find>score</find>
+      <find>AgentState</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -423,12 +417,12 @@
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.12526652" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.12846482" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32900432" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.19264069" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.19264069" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -546,8 +540,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="272">
-          <caret line="17" column="29" selection-start-line="17" selection-start-column="29" selection-end-line="17" selection-end-column="29" />
+        <state relative-caret-position="-14960">
+          <caret line="23" column="17" lean-forward="true" selection-start-line="23" selection-start-column="17" selection-end-line="23" selection-end-column="17" />
         </state>
       </provider>
     </entry>
@@ -555,13 +549,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="3216">
           <caret line="201" column="13" selection-start-line="201" selection-start-column="13" selection-end-line="201" selection-end-column="13" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/pacman-contest/game.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="9792">
-          <caret line="612" selection-start-line="612" selection-end-line="612" />
         </state>
       </provider>
     </entry>
@@ -592,7 +579,7 @@
     <entry file="file://$PROJECT_DIR$/pacman-contest/mixins.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2688">
-          <caret line="168" lean-forward="true" selection-start-line="168" selection-end-line="168" />
+          <caret line="168" selection-start-line="168" selection-end-line="168" />
           <folding>
             <marker date="1539159837486" expanded="true" signature="674:679" ph="..." />
             <marker date="1539159837486" expanded="true" signature="1525:1528" ph="..." />
@@ -611,18 +598,25 @@
     <entry file="file://$PROJECT_DIR$/pacman-contest/capture.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="224">
-          <caret line="551" column="32" selection-start-line="551" selection-start-column="26" selection-end-line="551" selection-end-column="32" />
+          <caret line="576" column="12" lean-forward="true" selection-start-line="576" selection-start-column="12" selection-end-line="576" selection-end-column="12" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/pacman-contest/game.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="445">
+          <caret line="119" column="16" selection-start-line="119" selection-start-column="6" selection-end-line="119" selection-end-column="16" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/dijkstra.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="368">
-          <caret line="364" column="46" lean-forward="true" selection-start-line="364" selection-start-column="46" selection-end-line="364" selection-end-column="46" />
+        <state relative-caret-position="938">
+          <caret line="407" lean-forward="true" selection-start-line="407" selection-end-line="407" />
           <folding>
-            <marker date="1539212426782" expanded="true" signature="12411:12414" ph="..." />
-            <marker date="1539212426782" expanded="true" signature="13215:13224" ph="..." />
-            <marker date="1539212426782" expanded="true" signature="15624:15630" ph="..." />
+            <marker date="1539316910666" expanded="true" signature="12416:12419" ph="..." />
+            <marker date="1539316910666" expanded="true" signature="13220:13229" ph="..." />
+            <marker date="1539316910666" expanded="true" signature="15629:15635" ph="..." />
           </folding>
         </state>
       </provider>
