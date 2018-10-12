@@ -19,7 +19,6 @@ from baselineTeam import DefensiveReflexAgent
 from heapq import heappop, heappush, heapify, nsmallest
 from operator import itemgetter, add
 from captureAgents import CaptureAgent
-import numpy
 
 
 #################

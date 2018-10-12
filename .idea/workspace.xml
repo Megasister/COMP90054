@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ac82a224-8231-45f0-8131-7b396b092dc0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pacman-contest/dijkstra.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/dijkstra.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pacman-contest/myTeam.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/myTeamOriginal.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pacman-contest/myTeam.py" beforeDir="false" afterPath="$PROJECT_DIR$/pacman-contest/myTeam.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -56,13 +54,13 @@
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="dummy" value="115" />
+          <entry key="dummy" value="121" />
           <entry key="py" value="33774" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="PLAIN_TEXT" value="115" />
+          <entry key="PLAIN_TEXT" value="121" />
           <entry key="Python" value="33774" />
         </counts>
       </usages-collector>
@@ -75,10 +73,10 @@
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
           <file pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/pacman-contest/dijkstra.py">
+            <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state>
-                  <caret column="10" selection-start-column="10" selection-end-column="10" />
+                <state relative-caret-position="336">
+                  <caret line="21" lean-forward="true" selection-start-line="21" selection-end-line="21" />
                 </state>
               </provider>
             </entry>
@@ -217,8 +215,8 @@
         <option value="$PROJECT_DIR$/pacman-contest/agents.py" />
         <option value="$PROJECT_DIR$/pacman-contest/mixins.py" />
         <option value="$PROJECT_DIR$/pacman-contest/capture.py" />
-        <option value="$PROJECT_DIR$/pacman-contest/myTeam.py" />
         <option value="$PROJECT_DIR$/pacman-contest/dijkstra.py" />
+        <option value="$PROJECT_DIR$/pacman-contest/myTeam.py" />
       </list>
     </option>
   </component>
@@ -530,10 +528,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pacman-contest/dijkstra.py">
+    <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="10" selection-start-column="10" selection-end-column="10" />
+        <state relative-caret-position="336">
+          <caret line="21" lean-forward="true" selection-start-line="21" selection-end-line="21" />
         </state>
       </provider>
     </entry>
