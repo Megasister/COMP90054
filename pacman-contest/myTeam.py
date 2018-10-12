@@ -11,997 +11,620 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
+from __future__ import division, print_function
 
-from captureAgents import CaptureAgent
-from distanceCalculator import Distancer, manhattanDistance
-from game import Directions
-from util import nearestPoint
 import random
-import time
-import util
+
+from baselineTeam import DefensiveReflexAgent
+from heapq import heappop, heappush, heapify, nsmallest
+from operator import itemgetter, add
+from captureAgents import CaptureAgent
+import numpy
+
 
 #################
 # Team creation #
 #################
+from distanceCalculator import manhattanDistance
+from game import Directions
+from mixins import InferenceMixin
+
+
 def createTeam(
     firstIndex,
     secondIndex,
     isRed,
-    first='OffensiveAgent',
-    second='DefensiveAgent'
+    first='AbuseMonteCarloAgent',
+    second='AbuseMonteCarloAgent',
 ):
-    return [eval(first)(firstIndex, isRed), eval(second)(secondIndex, isRed)]
+    return [
+        eval(first)(firstIndex, isRed, False),
+        eval(second)(secondIndex, isRed, True)
+    ]
 
 
-class offensiveAgent(CaptureAgent):
-    def registerInitialState(self, gameState):
+# helper function to perform element-wise addition on two lists
+def _sum_list(x, y):
+    return map(add, x, y)
 
-        """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
 
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
-
-    IMPORTANT: This method may run for at most 15 seconds.
+################################################################################
+# Mixed Agents
+################################################################################
+class DijkstraMonteCarloAgent(CaptureAgent, object):
+    """
+    This is a class define an offensive agent which use A* to initiate an
+    optimal path to eat all food, and use Monte Carlo to escape from the chasers
+    if the chaser is within the visible range
     """
 
-        '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
-        CaptureAgent.registerInitialState(self, gameState)
-        self.myCapsules = self.getCapsules(gameState)
-        self.foodEaten = 0
-        self.final_food_reward = 1
-        self.final_food_discount_rate = 0.5
-        walls = gameState.getWalls()[:]
-        self.width = len(walls)
-        self.height = len(walls[0])
-        self.initialPosition = gameState.getInitialAgentPosition(self.index)
-        self.firstTime = True
-        self.ghostHunterStep = 10
-        self.toHomeDistance = util.Counter()
-        node = util.Queue()
-        half_width = self.width / 2
-        if not self.red:
-            for x in xrange(half_width + 1, self.width):
-                for y in xrange(1, self.height):
-                    if not walls[x][y]:
-                        self.toHomeDistance[(x, y)] = -1
-            for y in xrange(0, self.height):
-                if not walls[half_width][y]:
-                    self.toHomeDistance[(half_width, y)] = 1
-                    node.push((half_width, y, 1))
-            while not node.isEmpty():
-                temp_node = node.pop()
-                if not walls[temp_node[0] + 1][temp_node[1]]:
-                    if self.toHomeDistance[
-                        (temp_node[0] + 1, temp_node[1])] == 0:
-                        self.toHomeDistance[(temp_node[0] + 1, temp_node[1])]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0] + 1, temp_node[1], temp_node[2] + 1))
-                if not walls[temp_node[0]][temp_node[1] + 1]:
-                    if self.toHomeDistance[
-                        (temp_node[0], temp_node[1] + 1)] == 0:
-                        self.toHomeDistance[(temp_node[0], temp_node[1] + 1)]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0], temp_node[1] + 1, temp_node[2] + 1))
-                if not walls[temp_node[0] - 1][temp_node[1]]:
-                    if self.toHomeDistance[
-                        (temp_node[0] - 1, temp_node[1])] == 0:
-                        self.toHomeDistance[(temp_node[0] - 1, temp_node[1])]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0] - 1, temp_node[1], temp_node[2] + 1))
-                if not walls[temp_node[0]][temp_node[1] - 1]:
-                    if self.toHomeDistance[
-                        (temp_node[0], temp_node[1] - 1)] == 0:
-                        self.toHomeDistance[(temp_node[0], temp_node[1] - 1)]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0], temp_node[1] - 1, temp_node[2] + 1))
-        else:
-            for x in xrange(1, half_width - 1):
-                for y in xrange(1, self.height):
-                    if not walls[x][y]:
-                        self.toHomeDistance[(x, y)] = -1
-            for y in xrange(0, self.height):
-                if not walls[half_width - 1][y]:
-                    self.toHomeDistance[(half_width - 1, y)] = 1
-                    node.push((half_width - 1, y, 1))
-            while not node.isEmpty():
-                temp_node = node.pop()
-                if not walls[temp_node[0] + 1][temp_node[1]]:
-                    if self.toHomeDistance[
-                        (temp_node[0] + 1, temp_node[1])] == 0:
-                        self.toHomeDistance[(temp_node[0] + 1, temp_node[1])]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0] + 1, temp_node[1], temp_node[2] + 1))
-                if not walls[temp_node[0]][temp_node[1] + 1]:
-                    if self.toHomeDistance[
-                        (temp_node[0], temp_node[1] + 1)] == 0:
-                        self.toHomeDistance[(temp_node[0], temp_node[1] + 1)]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0], temp_node[1] + 1, temp_node[2] + 1))
-                if not walls[temp_node[0] - 1][temp_node[1]]:
-                    if self.toHomeDistance[
-                        (temp_node[0] - 1, temp_node[1])] == 0:
-                        self.toHomeDistance[(temp_node[0] - 1, temp_node[1])]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0] - 1, temp_node[1], temp_node[2] + 1))
-                if not walls[temp_node[0]][temp_node[1] - 1]:
-                    if self.toHomeDistance[
-                        (temp_node[0], temp_node[1] - 1)] == 0:
-                        self.toHomeDistance[(temp_node[0], temp_node[1] - 1)]\
-                            = \
-                            temp_node[2] + 1
-                        node.push(
-                            (temp_node[0], temp_node[1] - 1, temp_node[2] + 1))
+    _DIRECTION = (
+        (0, 1),
+        (1, 0),
+        (0, -1),
+        (-1, 0)
+    )
 
-        self.initiateFoodValue(gameState)
+    _distribution = _validPos = None
+    _initialised = False
 
-    def initiateFoodValue(self, gameState):
-        # this is for initial food value map
-        if not self.ghostHunterStep == 10:
-            self.ghostHunterStep += 1
-        walls = gameState.getWalls()[:]
-        self.foodList = []
-        foodgrid = self.getFood(gameState)[:]
-        for x in xrange(len(foodgrid)):
-            for y in xrange(len(foodgrid[0])):
-                if (foodgrid[x][y]):
-                    self.foodList.append((x, y))
-        foodList = self.foodList
-        self.foodValue = util.Counter()
-        self.eachfoodValue = {}
-        for food in foodList:
-            tempfoodValue = util.Counter()
-            expendable_food = util.Queue()
-            tempfoodValue[(food[0], food[1])] = self.final_food_reward
-            expendable_food.push((food[0], food[1], self.final_food_reward))
-            while not expendable_food.isEmpty():
-                temp_food = expendable_food.pop()
-                if not walls[temp_food[0] + 1][temp_food[1]]:
-                    if tempfoodValue[(temp_food[0] + 1, temp_food[1])] == 0:
-                        tempfoodValue[(temp_food[0] + 1, temp_food[1])] = \
-                            temp_food[2] * self.final_food_discount_rate
-                        expendable_food.push((temp_food[0] + 1, temp_food[1],
-                                              temp_food[
-                                                  2] *
-                                              self.final_food_discount_rate))
-                if not walls[temp_food[0]][temp_food[1] + 1]:
-                    if tempfoodValue[(temp_food[0], temp_food[1] + 1)] == 0:
-                        tempfoodValue[(temp_food[0], temp_food[1] + 1)] = \
-                            temp_food[2] * self.final_food_discount_rate
-                        expendable_food.push((temp_food[0], temp_food[1] + 1,
-                                              temp_food[
-                                                  2] *
-                                              self.final_food_discount_rate))
-                if not walls[temp_food[0] - 1][temp_food[1]]:
-                    if tempfoodValue[(temp_food[0] - 1, temp_food[1])] == 0:
-                        tempfoodValue[(temp_food[0] - 1, temp_food[1])] = \
-                            temp_food[2] * self.final_food_discount_rate
-                        expendable_food.push((temp_food[0] - 1, temp_food[1],
-                                              temp_food[
-                                                  2] *
-                                              self.final_food_discount_rate))
-                if not walls[temp_food[0]][temp_food[1] - 1]:
-                    if tempfoodValue[(temp_food[0], temp_food[1] - 1)] == 0:
-                        tempfoodValue[(temp_food[0], temp_food[1] - 1)] = \
-                            temp_food[2] * self.final_food_discount_rate
-                        expendable_food.push((temp_food[0], temp_food[1] - 1,
-                                              temp_food[
-                                                  2] *
-                                              self.final_food_discount_rate))
-            self.eachfoodValue[food] = tempfoodValue
-            for item in tempfoodValue.items():
-                self.foodValue[item[0]] += tempfoodValue[item[0]]
+    @classmethod
+    def _validMove(cls, pos, wall):
+        x, y = pos
+        # a STOP is possible
+        ds = cls._DIRECTION
+        return [pos] + [
+            (x + dx, y + dy)
+            for dx, dy in ds
+            if not wall[x + dx][y + dy]
+        ]
 
-    def chooseAction(self, gameState):
-        myPqueue = util.PriorityQueue()
-        position = gameState.getAgentPosition(self.index)
-        if self.amIGhost(position):
-            self.foodEaten = 0
-        if self.initialPosition == position and not self.firstTime:
-            self.initiateFoodValue(gameState)
-        opponentsPosition = self.getOpponentsPosition(gameState)
-        foodList = list(self.foodList)
-        foodValue = self.foodValue.copy()
-        foodEaten = self.foodEaten
-        myPqueue.push(
-            (gameState, 1, None, 0, foodList, foodValue, foodEaten, 10), 1)
-        max_value = util.Counter()
-        current_state = myPqueue.pop()
-        visted = []
-        numObser = len(opponentsPosition)
-        numGhost = 0
-        Tvalue = 0
-        for opponent in opponentsPosition:
-            if (self.isHeGhost(opponent)):
-                numGhost += 1
-        if numObser == 0 or numGhost == 0 or self.ghostHunterStep < 10:
-            Tvalue = 2
-        else:
-            Tvalue = 15
-        while current_state[1] < Tvalue:
-            actions = current_state[0].getLegalActions(self.index)
-            tempPosition = current_state[0].getAgentPosition(self.index)
-            new_opponentsPosition = list(opponentsPosition)
-            tempFoodList = list(current_state[4])
-            tempFoodValue = current_state[5].copy()
-            tempFoodEaten = current_state[6]
-            values = util.Counter()
-            for action in actions:
-                if action == 'North':
-                    if not current_state[1] == 1:
-                        for opponentPosition in opponentsPosition:
-                            new_opponentsPosition.append(self.upGhostLocation(
-                                (tempPosition[0], tempPosition[1] + 1),
-                                opponentPosition, gameState))
-                    values[(action, tempPosition[0],
-                            tempPosition[1] + 1)] = self.getValue(
-                        tempPosition[0], tempPosition[1] + 1,
-                        new_opponentsPosition, gameState, tempFoodValue,
-                        tempFoodEaten, current_state[7])
-                elif action == 'South':
-                    if not current_state[1] == 1:
-                        for opponentPosition in opponentsPosition:
-                            new_opponentsPosition.append(self.upGhostLocation(
-                                (tempPosition[0], tempPosition[1] - 1),
-                                opponentPosition, gameState))
-                    values[(action, tempPosition[0],
-                            tempPosition[1] - 1)] = self.getValue(
-                        tempPosition[0], tempPosition[1] - 1,
-                        new_opponentsPosition, gameState, tempFoodValue,
-                        tempFoodEaten, current_state[7])
-                elif action == 'West':
-                    if not current_state[1] == 1:
-                        for opponentPosition in opponentsPosition:
-                            new_opponentsPosition.append(self.upGhostLocation(
-                                (tempPosition[0] - 1, tempPosition[1]),
-                                opponentPosition, gameState))
-                    values[(action, tempPosition[0] - 1,
-                            tempPosition[1])] = self.getValue(
-                        tempPosition[0] - 1, tempPosition[1],
-                        new_opponentsPosition, gameState, tempFoodValue,
-                        tempFoodEaten, current_state[7])
-                elif action == 'East':
-                    if not current_state[1] == 1:
-                        for opponentPosition in opponentsPosition:
-                            new_opponentsPosition.append(self.upGhostLocation(
-                                (tempPosition[0] + 1, tempPosition[1]),
-                                opponentPosition, gameState))
-                    values[(action, tempPosition[0] + 1,
-                            tempPosition[1])] = self.getValue(
-                        tempPosition[0] + 1, tempPosition[1],
-                        new_opponentsPosition, gameState, tempFoodValue,
-                        tempFoodEaten, current_state[7])
-            i = 1
-            for key in values.sortedKeys():
-                # if (key[1],key[2]) in visted:
-                if values[key] == -10000:
-                    continue
-                if (current_state[0].getAgentPosition(self.index),
-                    key[0]) in visted:
-                    continue
-                visted.append(
-                    (current_state[0].getAgentPosition(self.index), key[0]))
-                tempFoodEaten = self.updateFoodInfo(
-                    current_state[0].getAgentPosition(self.index), tempFoodList,
-                    tempFoodEaten, tempFoodValue)
-                if (key[1], key[2]) in self.myCapsules:
-                    temp_step = 1
-                elif current_state[7] != 10:
-                    temp_step = current_state[7] + 1
-                else:
-                    temp_step = 10
-                if current_state[2] == None:
-                    myPqueue.push((
-                        current_state[0].generateSuccessor(self.index, key[0]),
-                        i + current_state[1], key[0], values[key], tempFoodList,
-                        tempFoodValue, tempFoodEaten, temp_step),
-                        i + current_state[1])
-                else:
-                    myPqueue.push((
-                        current_state[0].generateSuccessor(self.index, key[0]),
-                        i + current_state[1], current_state[2], values[key],
-                        tempFoodList, tempFoodValue, tempFoodEaten, temp_step),
-                        i + current_state[1])  # i+=1
-            if myPqueue.isEmpty():
-                return random.choice(gameState.getLegalActions(self.index))
-            current_state = myPqueue.pop()  # this is for the last element
-            visted.append(current_state[0].getAgentPosition(self.index))
-            if max_value[current_state[2]] == 0:
-                max_value[current_state[2]] = current_state[3]
-            elif max_value[current_state[2]] < current_state[3]:
-                max_value[current_state[2]] = current_state[3]
-        temp_value = -999
-        next_action = None
-        while not myPqueue.isEmpty():
-            current_state = myPqueue.pop()
-            if max_value[current_state[2]] < current_state[3]:
-                max_value[current_state[2]] = current_state[
-                    3]  # print current_state[3]  # if current_state[  #   #
-                #  3]>temp_value:  #     temp_value=current_state[3]  #  #
-                #  #  new_postion = gameState.generateSuccessor(self.index,
-                #  current_state[2]).getAgentPosition(self.index)  #  #   #
-                #  next_action= current_state[2]
-        next_action = max_value.argMax()
-        new_position = gameState.generateSuccessor(self.index,
-                                                   next_action).getAgentPosition(
-            self.index)
-        # self.foodEaten = self.updateFoodInfo(new_postion, self.foodList,
-        # self.foodEaten, self.foodValue)
-        if (new_position[0], new_position[1]) in self.foodList:
-            self.foodList.remove((new_position[0], new_position[1]))
-            tempFoodValue2 = self.eachfoodValue[
-                (new_position[0], new_position[1])]
-            if self.foodEaten == 0:
-                self.foodEaten = 2
-            else:
-                self.foodEaten *= 2
-            for item in tempFoodValue2.items():
-                self.foodValue[item[0]] -= tempFoodValue2[item[0]]
-        if (new_position[0], new_position[1]) in self.myCapsules:
-            self.myCapsules.remove((new_position[0], new_position[1]))
-            self.ghostHunterStep = 1
-        self.firstTime = False
-        return next_action
+    _instances = [None, None]
+    _computed = False
 
-    def upGhostLocation(self, our_new_position, ghost_old_position, gameState):
-        minDistance = util.Counter()
-        new_ghost_position = []
-        new_ghost_position.append(
-            (ghost_old_position[0], ghost_old_position[1]))
-        new_ghost_position.append(
-            (ghost_old_position[0], ghost_old_position[1] + 1))
-        new_ghost_position.append(
-            (ghost_old_position[0], ghost_old_position[1] - 1))
-        new_ghost_position.append(
-            (ghost_old_position[0] + 1, ghost_old_position[1]))
-        new_ghost_position.append(
-            (ghost_old_position[0] - 1, ghost_old_position[1]))
-        for element in new_ghost_position:
-            if not gameState.hasWall(element[0], element[1]):
-                if self.getMazeDistance(our_new_position, element) == 0:
-                    return element
-                minDistance[element] = -self.getMazeDistance(our_new_position,
-                                                             element)
-        return minDistance.argMax()
+    def __init__(self, index, red, defense, timeForComputing=.1):
+        CaptureAgent.__init__(self, index, timeForComputing)
+        object.__init__(self)
 
-    def updateFoodInfo(self, position, foodList, foodEaten, foodValue):
-        if (position[0], position[1]) in foodList:
-            foodList.remove((position[0], position[1]))
-            tempFoodValue2 = self.eachfoodValue[(position[0], position[1])]
-            if foodEaten == 0:
-                foodEaten = 2
-            else:
-                foodEaten *= 2
-            for item in tempFoodValue2.items():
-                foodValue[item[0]] -= tempFoodValue2[item[0]]
-        return foodEaten
+        self.red = red
+        self._defense = defense
+        self._bound = self._actions = None
+        self._prevCarry = 0
 
-    def getValue(self, x, y, opponentsPosition, gameState, foodValue, foodEaten,
-                 step):
-        numObser = len(opponentsPosition)
-        numGhost = 0
-        for opponent in opponentsPosition:
-            if (self.isHeGhost(opponent)):
-                numGhost += 1
-        if numObser == 0 or numGhost == 0:
-            if (x, y) in self.myCapsules:
-                value = foodValue[(x, y)] + 1 * foodEaten / float(
-                    self.toHomeDistance[(x, y)])
-            else:
-                value = foodValue[(x, y)] + 1 * foodEaten / float(
-                    self.toHomeDistance[(x, y)])
-            return value
-        if numGhost == 1:
-            if self.getMazeDistance(opponentsPosition[0], (x, y)) == 0:
-                return -10000 * (self.ghostHunterStep - 10)
-            elif self.doIScareGhost((x, y)) or self.ghostHunterStep < 10:
-                ghostAffect = 0
-            else:
-                ghostAffect = 5.0 * (foodEaten + foodValue[(x, y)]) / (float(
-                    self.getMazeDistance(opponentsPosition[0], (x, y))) * 0.1)
-            value = foodValue[(x, y)] + 1 * foodEaten / (
-                float(self.toHomeDistance[(x, y)])) - ghostAffect
-            if (x, y) in self.myCapsules:
-                value += 2
-            return value
-        else:
-            ghostAffect = 0
-            for opponentPosition in opponentsPosition:
-                if self.isHeGhost(opponentPosition):
-                    if self.getMazeDistance(opponentPosition, (x, y)) == 0:
-                        return -10000 * (step - 10)
-                    elif self.doIScareGhost(
-                        (x, y)) or self.ghostHunterStep < 10:
-                        ghostAffect = 0
-                        break
-                    else:
-                        ghostAffect += 5.0 * (foodEaten + foodValue[(x, y)]) / (
-                            float(self.getMazeDistance(opponentPosition,
-                                                       (x, y))) * 0.1)
-            value = foodValue[(x, y)] + 1 * foodEaten / (
-                float(self.toHomeDistance[(x, y)])) - ghostAffect
-            if (x, y) in self.myCapsules:
-                value += 2
-            return value
-
-    def getOpponentsPosition(self, gameState):
-        opponents = self.getOpponents(gameState)
-        opponentsPosition = []
-        for opponent in opponents:
-            position = gameState.getAgentPosition(opponent)
-            if position:
-                opponentsPosition.append(position)
-        return opponentsPosition
-
-    def amIGhost(self, position):
-        if self.red:
-            if position[0] < (self.width / 2):
-                return True
-            else:
-                return False
-        else:
-            if position[0] < (self.width / 2):
-                return False
-            else:
-                return True
-
-    def doIScareGhost(self, position):
-        if self.red:
-            if position[0] < ((self.width / 2) - 1):
-                return True
-            else:
-                return False
-        else:
-            if position[0] < ((self.width / 2) + 1):
-                return False
-            else:
-                return True
-
-    def isHeGhost(self, position):
-        if self.red:
-            if position[0] < (self.width / 2):
-                return False
-            else:
-                return True
-        else:
-            if position[0] < (self.width / 2):
-                return True
-            else:
-                return False
-
-    def gotoCloestFood(self, gameState):
-        foodList = self.foodList
-        position = gameState.getAgentPosition(self.index)
-        fooddistance = util.Counter
-        for food in foodList:
-            fooddistance[food] = -self.getMazeDistance(food, position)
-        closetfood = fooddistance.argMax()
-        bestaction = None
-        actiondistance = util.Counter
-        for action in gameState.getLegalActions(self.index):
-            if action == 'North':
-                newposition = (position[0], position[1] + 1)
-                actiondistance[action] = -self.getMazeDistance(closetfood,
-                                                               newposition)
-            elif action == 'South':
-                newposition = (position[0], position[1] - 1)
-                actiondistance[action] = -self.getMazeDistance(closetfood,
-                                                               newposition)
-            elif action == 'West':
-                newposition = (position[0] - 1, position[1])
-                actiondistance[action] = -self.getMazeDistance(closetfood,
-                                                               newposition)
-            elif action == 'East':
-                newposition = (position[0] + 1, position[1])
-                actiondistance[action] = -self.getMazeDistance(closetfood,
-                                                               newposition)
-        return actiondistance.argMax()
-
-
-class atLeastDefensiveAgent(CaptureAgent):
-    """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
-  """
+        # record each instance created
+        self._instances[index // 2] = self
+        self._teammate = (index // 2 + 1) % 2
 
     def registerInitialState(self, gameState):
         """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
-
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
-
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
+        Initialise the agent and compute an initial route
+        """
         CaptureAgent.registerInitialState(self, gameState)
-        walls = gameState.getWalls()[:]
-        self.actionList = util.Queue()
-        self.width = len(walls)
-        self.height = len(walls[0])
-        self.initiateFooddistance(gameState)
-        self.center = self.foodValue.argMax()
 
-    def initiateFooddistance(self, gameState):
-        # this is for initial food value map
-        walls = gameState.getWalls()[:]
-        self.foodList = []
-        foodgrid = self.getFoodYouAreDefending(gameState)[:]
-        for x in xrange(len(foodgrid)):
-            for y in xrange(len(foodgrid[0])):
-                if (foodgrid[x][y]):
-                    self.foodList.append((x, y))
-        foodList = self.foodList
-        self.foodValue = util.Counter()
-        self.eachfoodValue = {}
-        self.final_food_reward = 0
-        for food in foodList:
-            tempfoodValue = util.Counter()
-            expendable_food = util.Queue()
-            tempfoodValue[(food[0], food[1])] = self.final_food_reward
-            expendable_food.push((food[0], food[1], self.final_food_reward))
-            while not expendable_food.isEmpty():
-                temp_food = expendable_food.pop()
-                if not walls[temp_food[0] + 1][temp_food[1]]:
-                    if tempfoodValue[(temp_food[0] + 1, temp_food[1])] == 0:
-                        tempfoodValue[(temp_food[0] + 1, temp_food[1])] = \
-                            temp_food[2] - 1
-                        expendable_food.push(
-                            (temp_food[0] + 1, temp_food[1], temp_food[2] - 1))
-                if not walls[temp_food[0]][temp_food[1] + 1]:
-                    if tempfoodValue[(temp_food[0], temp_food[1] + 1)] == 0:
-                        tempfoodValue[(temp_food[0], temp_food[1] + 1)] = \
-                            temp_food[2] - 1
-                        expendable_food.push(
-                            (temp_food[0], temp_food[1] + 1, temp_food[2] - 1))
-                if not walls[temp_food[0] - 1][temp_food[1]]:
-                    if tempfoodValue[(temp_food[0] - 1, temp_food[1])] == 0:
-                        tempfoodValue[(temp_food[0] - 1, temp_food[1])] = \
-                            temp_food[2] - 1
-                        expendable_food.push(
-                            (temp_food[0] - 1, temp_food[1], temp_food[2] - 1))
-                if not walls[temp_food[0]][temp_food[1] - 1]:
-                    if tempfoodValue[(temp_food[0], temp_food[1] - 1)] == 0:
-                        tempfoodValue[(temp_food[0], temp_food[1] - 1)] = \
-                            temp_food[2] - 1
-                        expendable_food.push(
-                            (temp_food[0], temp_food[1] - 1, temp_food[2] - 1))
-            self.eachfoodValue[food] = tempfoodValue
-            for item in tempfoodValue.items():
-                self.foodValue[item[0]] += tempfoodValue[item[0]]
+        data = gameState.data
+        layout = data.layout
+        height, width = layout.height, layout.width
+        half = width // 2
+        red = self.red
+        bound = half - 1 if red else half
+        walls = layout.walls
+        self._bound = set(
+            (bound, y) for y in xrange(height) if not walls[bound][y]
+        )
 
-    def updateFoodList(self, gameState):
-        self.foodList = []
-        foodgrid = self.getFoodYouAreDefending(gameState)[:]
-        for x in xrange(len(foodgrid)):
-            for y in xrange(len(foodgrid[0])):
-                if (foodgrid[x][y]):
-                    self.foodList.append((x, y))
+        self._initialise(gameState, red)
+
+        # only offensive agent needs to compute the route
+        if not self._defense:
+            self._computeRoute(gameState)
+
+    def _computeRoute(self, gameState):
+        data = gameState.data
+        foods = data.food.data
+        height, width, half = self._height, self._width, self._half
+        red = self.red
+        # deliver the food to the bound to gain actual score
+        bounds = self._bound
+        foods = set(
+            (x, y)
+            for x in (xrange(half, width) if red else xrange(half))
+            for y in xrange(height)
+            if foods[x][y]
+        )
+        distancer = self.distancer
+
+        # Dijkstra (or variant of Uniform Cost Search) implementation
+        pos = data.agentStates[self.index].configuration.pos
+        path = []
+        q = [(0, pos, path, foods)]
+        while q:
+            dist, pos, path, fs = heappop(q)
+
+            if pos in bounds:
+                break
+
+            if fs:
+                npos, ndist = min(
+                    ((np, dist + distancer.getDistance(pos, np)) for np in fs),
+                    key=itemgetter(1)
+                )
+
+                nfs = fs.copy()
+                nfs.remove(npos)
+                heappush(q, (ndist, npos, path + [npos], nfs))
+            else:
+                npos, ndist = min(
+                    (
+                        (np, dist + distancer.getDistance(pos, np))
+                        for np in bounds
+                    ),
+                    key=itemgetter(1)
+                )
+                heappush(q, (ndist, npos, path + [npos], None))
+        # reverse the path to utilise the efficiency of list.pop
+        path.reverse()
+
+        self._actions = path
+
+    @classmethod
+    def _initialise(cls, initState, red):
+        if cls._initialised:
+            return
+
+        # initialise all valid positions with the given wall configuration
+        data = initState.data
+        wall = data.layout.walls
+        height, width = wall.height, wall.width
+        wall = data.layout.walls.data
+        cls._validPos = [
+            (x, y)
+            for x in xrange(width)
+            for y in xrange(height)
+            if not wall[x][y]
+        ]
+
+        # the initial position is visible
+        agentStates = data.agentStates
+        cls._distribution = {
+            i: {tuple(map(int, agentStates[i].configuration.pos)): 1.0}
+            for i in (initState.blueTeam if red else initState.redTeam)
+        }
+
+        cls._initialised = True
+
+    def _notifyDeath(self):
+        # TODO: notify the teammate the death of the current agent
+        pass
+
+    def _roleChange(self):
+        # TODO: return a boolean value to indicate if current role change
+        pass
+
+    def _nextDistribution(self, gameState):
+        agentDistances = gameState.agentDistances
+        data = gameState.data
+        layout = data.layout
+        wall = layout.walls.data
+        agentStates = data.agentStates
+        vp = self._validPos
+        dist = {}
+        pos = agentStates[self.index].configuration.pos
+        print("--------", self._distribution)
+
+        for agent, adist in self._distribution.items():
+            agentState = agentStates[agent]
+            conf = agentState.configuration
+            # if the agent is visible
+            if conf is not None:
+                pos = tuple(map(int, conf.pos))
+                dist[agent] = {pos: 1.0}
+                self._instances[self._teammate]._distribution[agent] = {
+                    pos: 1.0
+                }
+                continue
+
+            ndist = agentDistances[agent]
+            print("--------", ndist)
+            nd = {}
+            # find all valid positions according to the noisy distance
+            ps = [p for p in vp if -7 < manhattanDistance(pos, p) - ndist < 7]
+            # iterate over all existing positions
+            for k, v in adist.items():
+                # generate all valid positions after possible move
+                vm = self._validMove(k, wall)
+                # count the number of valid points for each of the possible
+                # position after movement
+                cp = reduce(_sum_list, ([
+                    manhattanDistance(m, p) < 7 for m in vm
+                ] for p in ps))
+                scp = sum(cp)
+                # normalise to get a vector of probabilities to redistribute the
+                # probability
+                if scp != 0:
+                    cp = [c / scp for c in cp]
+                for m, p in zip(vm, cp):
+                    nd[m] = nd.get(m, 0) + v * p
+
+            # remove all zero probability and normalise the probability
+            tp = sum(nd.values())
+            dist[agent] = {k: v / tp for k, v in nd.items() if v > 0}
+        self._distribution = dist
 
     def chooseAction(self, gameState):
-        if len(self.generateFoodGridToList(gameState)) > self.foodList:
-            self.updateFoodList(gameState)
-        opponentsPosition = self.getOpponentsPosition(gameState)
-        if len(opponentsPosition) == 0:
-            eatenFood = self.checkWhichFoodEated(gameState)
-            if eatenFood is None:
-                if self.actionList.isEmpty():
-                    self.generateActionList(gameState, self.center)
-                return self.actionList.pop()
-            else:
-                self.updateFoodList(gameState)
-                if self.actionList.isEmpty():
-                    self.generateActionList(gameState, eatenFood)
-                return self.actionList.pop()
-        elif len(opponentsPosition) == 1:
-            if self.getMazeDistance(opponentsPosition[0],
-                                    gameState.getAgentPosition(self.index)) < 5:
-                self.actionList = util.Queue()
-                self.updateFoodList(gameState)
-                return self.steptoLocation(gameState, opponentsPosition[0])[0]
-            else:
-                if self.actionList.isEmpty():
-                    self.generateActionList(gameState, self.center)
-                return self.actionList.pop()
-        elif len(opponentsPosition) == 2:
-            self.actionList = util.Queue()
-            position = gameState.getAgentPosition(self.index)
-            if self.getMazeDistance(position, opponentsPosition[
-                0]) < self.getMazeDistance(position, opponentsPosition[1]):
-                self.updateFoodList(gameState)
-                return self.steptoLocation(gameState, opponentsPosition[0])[0]
-            else:
-                self.updateFoodList(gameState)
-                return self.steptoLocation(gameState, opponentsPosition[1])[0]
+        """
+        Choose an action based on the current status of the agent
+        """
+        self._nextDistribution(gameState)
+        print("====", self.index)
+        print(self._distribution)
 
-    def getOpponentsPosition(self, gameState):
-        opponents = self.getOpponents(gameState)
-        opponentsPosition = []
-        for opponent in opponents:
-            position = gameState.getAgentPosition(opponent)
-            if position:
-                opponentsPosition.append(position)
-        return opponentsPosition
+        return self.defenseAction(gameState) \
+            if self._defense \
+            else self.offenseAction(gameState)
 
-    def checkWhichFoodEated(self, gameState):
-        eatenFood = []
-        for food in self.foodList:
-            if food not in self.generateFoodGridToList(gameState):
-                self.foodList.remove(food)
-                eatenFood.append(food)
-        if len(eatenFood) == 1:
-            return eatenFood[0]
-        else:
-            return None
+    def defenseAction(self, gameState):
+        """
+        Choose a defensive action
+        """
+        index = self.index
+        data = gameState.data
+        agentStates = data.agentStates
+        agentState = agentStates[index]
+        pos = agentState.configuration.pos
+        distancer = self.distancer
 
-    def generateFoodGridToList(self, gameState):
-        foodList = []
-        foodgrid = self.getFoodYouAreDefending(gameState)[:]
-        for x in xrange(len(foodgrid)):
-            for y in xrange(len(foodgrid[0])):
-                if (foodgrid[x][y]):
-                    foodList.append((x, y))
-        return foodList
+        # compute the expected distances to each opponent according to the
+        # current distribution
+        expected = [
+            (k, max(dist.items(), key=itemgetter(1))[0])
+            for k, dist in self._distribution.items()
+        ]
+        closest = min(
+            (
+                # try to reach the closest agent and select the one carrying
+                # more food if ties
+                (p, distancer.getDistance(pos, p), agentStates[k].numCarrying)
+                for k, p in expected
+            ),
+            key=itemgetter(1, 2)
+        )[0]
+        # generate state for each successor
+        a = [
+            (a, gameState.generateSuccessor(index, a))
+            for a in gameState.getLegalActions(index)
+        ]
+        # filter out the state where the agent has crossed the bound
+        a = [
+            (a, successor)
+            for a, successor in a
+            if not successor.data.agentStates[index].isPacman
+        ]
+        a, _, s = min(
+            (
+                (
+                    a,
+                    distancer.getDistance(
+                        closest,
+                        successor.data.agentStates[index].configuration.pos
+                    ),
+                    successor
+                )
+                for a, successor in a
+            ),
+            key=itemgetter(1)
+        )
 
-    def generateActionList(self, gameState, destination):
-        self.actionList = util.Queue()
-        action, newposition = self.steptoLocation(gameState, destination)
-        self.actionList.push(action)
-        Successor = gameState
-        while newposition != destination:
-            Successor = Successor.generateSuccessor(self.index, action)
-            action, newposition = self.steptoLocation(Successor, destination)
-            self.actionList.push(action)
+        pos = s.data.agentStates[index].configuration.pos
+        print("----", pos)
+        for i in self._oppo:
+            conf = agentStates[i].configuration
+            initPos = data.layout.agentPositions[i][1]
+            if conf:
+                print("----", i, conf.pos)
+                if conf.pos == pos:
+                    self._notifyEaten(i, initPos)
 
-    def steptoLocation(self, gameState, destination):
-        actiondistance = util.Counter()
-        position = gameState.getAgentPosition(self.index)
-        for action in gameState.getLegalActions(self.index):
-            if action == 'North':
-                newposition = (position[0], position[1] + 1)
-                actiondistance[action] = -self.getMazeDistance(destination,
-                                                               newposition)
-            elif action == 'South':
-                newposition = (position[0], position[1] - 1)
-                actiondistance[action] = -self.getMazeDistance(destination,
-                                                               newposition)
-            elif action == 'West':
-                if not self.red:
-                    if position[0] == self.width / 2:
-                        continue
-                newposition = (position[0] - 1, position[1])
-                actiondistance[action] = -self.getMazeDistance(destination,
-                                                               newposition)
-            elif action == 'East':
-                if self.red:
-                    if position[0] == self.width / 2 - 1:
-                        continue
-                newposition = (position[0] + 1, position[1])
-                actiondistance[action] = -self.getMazeDistance(destination,
-                                                               newposition)
-        if len(actiondistance) == 0:
-            return 'Stop', position
-        final_action = actiondistance.argMax()
-        if final_action == 'North':
-            newposition = (position[0], position[1] + 1)
-        elif final_action == 'South':
-            newposition = (position[0], position[1] - 1)
-        elif final_action == 'West':
-            newposition = (position[0] - 1, position[1])
-        elif final_action == 'East':
-            newposition = (position[0] + 1, position[1])
-        return final_action, newposition
+        return a
 
-    def isHeGhost(self, position):
-        if self.red:
-            if position[0] < (self.width / 2):
-                return False
-            else:
-                return True
-        else:
-            if position[0] < (self.width / 2):
-                return True
-            else:
-                return False
+    def offenseAction(self, gameState):
+        """
+        Choose an offensive action based on current circumstance, could either
+        be the followings
+        * following the route
+        * escape if in danger
+        """
+        index = self.index
+        agentState = gameState.data.agentStates[index]
+
+        if self._prevCarry > agentState.numCarrying:
+            self._computeRoute(gameState)
+        self._prevCarry = agentState.numCarrying
+
+        distancer = self.distancer
+        actions = self._actions
+        if agentState.configuration.pos == actions[-1]:
+            actions.pop()
+        cdest = actions[-1]
+        return min(
+            (
+                (
+                    a,
+                    distancer.getDistance(gameState.generateSuccessor(
+                        index, a
+                    ).data.agentStates[index].configuration.pos, cdest)
+                )
+                for a in gameState.getLegalActions(index)
+            ),
+            key=itemgetter(1)
+        )[0]
 
 
-#work done by Lai
-#an agent that uses Q approximation which equals features*weight,
-#structure is similar to baseline.py
-#last update 11/10/2018
-class OffensiveAgent(CaptureAgent):
-  """
-  A base class for reflex agents that chooses score-maximizing actions
-  """
- 
-  def registerInitialState(self, gameState):
-    self.start = gameState.getAgentPosition(self.index)
-    CaptureAgent.registerInitialState(self, gameState)
-    self.return_x = gameState.data.layout.width / 2
-    self.return_y = gameState.data.layout.height / 2
-    self.goBack = False
-    self.danger = False
-    
-    
-
-  def chooseAction(self, gameState):
+def MCTS(index, gameState, evaluate, depth=20, count=100):
     """
-    Picks among the actions with the highest Q(s,a).
+    Monte Carlo Tree Search
     """
-    actions = gameState.getLegalActions(self.index)
+    actions = gameState.getLegalActions(index)
+    wins = [0] * len(actions)
+    for i, action in enumerate(actions):
+        for c in xrange(count):
+            ind, d = index, depth
+            prevScore = -float("inf")
+            successor = gameState.generateSuccessor(ind, action)
+            score = evaluate(successor)
+            while score >= prevScore and d > 1:
+                prevScore = score
+                ind = (ind + 1) % 4
+                successor = successor.generateSuccessor(
+                    ind, random.choice(successor.getLegalActions(ind))
+                )
+                score = evaluate(successor)
+                d -= 1
+            wins[i] += score > prevScore
+    ms = max(wins)
+    return random.choice([a for a, s in zip(actions, wins) if s == ms])
 
-    # You can profile your evaluation time by uncommenting these lines
-    # start = time.time()
-    values = [self.evaluate(gameState, a) for a in actions]
-    # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
-    maxValue = max(values)
-    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-    return random.choice(bestActions)
 
-  def getSuccessor(self, gameState, action):
+class AbuseMonteCarloAgent(CaptureAgent, object):
     """
-    Finds the next successor which is a grid position (location tuple).
+    This is a class define an offensive agent which use A* to initiate an
+    optimal path to eat all food, and use Monte Carlo to escape from the chasers
+    if the chaser is within the visible range
     """
-    successor = gameState.generateSuccessor(self.index, action)
-    pos = successor.getAgentState(self.index).getPosition()
-    if pos != nearestPoint(pos):
-      # Only half a grid position was covered
-      return successor.generateSuccessor(self.index, action)
-    else:
-      return successor
 
-  def evaluate(self, gameState, action):
-    """
-    Computes a linear combination of features and feature weights
-    """
-    features = self.getFeatures(gameState, action)
-    weights = self.getWeights(gameState, action)
-    return features * weights
+    _instances = [None, None]
 
-  def getFeatures(self, gameState, action):
-    """
-    Returns a counter of features for the state
-    """
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-    #successor pos
-    next_x, next_y =successor.getAgentState(self.index).getPosition()
-    
-    #number of remaining food
-    food = self.getFood(gameState)
-    foodList = food.asList()
-    features['foodRemaining'] = len(foodList)
-    
-    #distance to the nearest food
-    if len(foodList) > 0:
-        #compute the minimum mazeDistance to food
-        minFood = min([self.getMazeDistance((next_x, next_y), foodPos) for foodPos in foodList])
-        features['distanceToFood'] = minFood
-    
-    #number of food carrying
-    foodCarrying = successor.getAgentState(self.index).numCarrying
-    features['foodCarrying'] = foodCarrying
-    
-    #distance to the nearest enermy
-    enemies = [successor.getAgentState(a) for a in self.getOpponents(successor)]
-    ghosts = filter(lambda x: not x.isPacman and x.getPosition() != None, enemies)
-    pacmen = filter(lambda x: x.isPacman and x.getPosition() != None, enemies)
-    
-    #distance to the nearest ghost
-    if len(ghosts) > 0:
-        minGhost = min([self.getMazeDistance((next_x, next_y), ghost.getPosition()) for ghost in ghosts])
-        #ignore if enermy is scared
-        scaredTime = min([successor.getAgentState(ghost).scaredTimer for ghost in self.getOpponents(successor)])
-        if (scaredTime > 0): minGhost = 0
-        features['distanceToGhost'] = minGhost
-        if minGhost < 4:
-            self.danger = True;
-    else:
-        self.danger = False;
-    
-    #distance to the nearest pacman
-    if len(pacmen) > 0:
-        minPacman = min([self.getMazeDistance((next_x, next_y), pacman.getPosition()) for pacman in pacmen])
-        features['distanceToPacman'] = minPacman
-    
-    #distance to the nearest capsule
-    if self.red:
-        capsuleList = gameState.getBlueCapsules()
-    else:
-        capsuleList = gameState.getRedCapsules()
-    if len(capsuleList) > 0:
-        #compute the minimum mazeDistance to capsule
-        minCapsule = min([self.getMazeDistance((next_x, next_y), capsulePos) for capsulePos in capsuleList])
-        features['distanceToCapsule'] = minCapsule
-    
-    #determine if is Pacman
-    features['isPacman'] = successor.getAgentState(self.index).isPacman
-    
-    #distance to return, copied from Tinson's code
-    walls = successor.data.layout.walls
-    width, height = successor.data.layout.width,successor.data.layout.height
-    half = width // 2
-    b = half - 1 if self.red else half
-    features['distanceToReturn'] = min(self.getMazeDistance((next_x, next_y), (b, y)) for y in xrange(height) if not walls[b][y])
-    
-    #determine if is stuck
-    features['stuck'] = action == Directions.STOP
+    def __init__(self, index, red, defense, timeForComputing=.1):
+        CaptureAgent.__init__(self, index, timeForComputing)
+        object.__init__(self)
 
-    #score feature from baseline.py
-    features['successorScore'] = self.getScore(successor)
-    
-    #distance to teammate
-    team = [teammate for teammate in self.getTeam(successor) if teammate != self.index]
-    distanceToTeamate = min([self.getMazeDistance((next_x, next_y), successor.getAgentState(teammate).getPosition()) for teammate in team])
-    #ignore teammate if is already far away
-    #if (distanceToTeamate) > 10: distanceToTeamate = 0
-    features['distanceToTeammate'] = distanceToTeamate
-    
-    #return conditions
-    if len(foodList) <= 2 or foodCarrying > 4 or self.danger:
-        self.goBack = True
-    else:
-        self.goBack = False
-    
-    #print self.goBack
-    return features
+        self.red = red
+        self._defense = defense
+        self._height = self._width = self._half = self._bound = \
+            self._actions = None
+        self._prevCarry = 0
+        self._recompute = False
 
-  def getWeights(self, gameState, action):
-    """
-    Normally, weights do not depend on the gamestate.  They can be either
-    a counter or a dictionary.
-    """
-    #returning food
-    if self.goBack:
-        return {'foodRemaining': 0, 'distanceToFood': -1, 'foodCarrying': 0,
-            'distanceToGhost': 5, 'distanceToPacman': -5, 'distanceToCapsule': -2,
-            'isPacman': -1, 'distanceToReturn' : -1000, 'stuck': -50, 'successorScore': 1000}
-    else:#looking for food
-        return {'foodRemaining': 0, 'distanceToFood': -3, 'foodCarrying': 10,
-            'distanceToGhost': 5, 'distanceToPacman': -6, 'distanceToCapsule': -2,
-            'isPacman': 2, 'distanceToReturn' : -1, 'stuck': -50, 'successorScore': 1000,
-            'distanceToTeammate': 0}
-    
-class DefensiveAgent(CaptureAgent):    
+        # record each instance created
+        self._instances[index // 2] = self
+
     def registerInitialState(self, gameState):
-        self.start = gameState.getAgentPosition(self.index)
+        """
+        Initialise the agent and compute an initial route
+        """
         CaptureAgent.registerInitialState(self, gameState)
-        self.return_x = gameState.data.layout.width / 2
-        self.return_y = gameState.data.layout.height / 2
-        self.goBack = False
-        self.danger = False
+
+        data = gameState.data
+        layout = data.layout
+        height = self._height = layout.height
+        width = self._width = layout.width
+        self._half = half = width // 2
+        red = self.red
+        bound = half - 1 if red else half
+        walls = layout.walls
+        self._bound = set(
+            (bound, y) for y in xrange(height) if not walls[bound][y]
+        )
+
+        # only offensive agent needs to compute the route
+        if not self._defense:
+            self._computeRoute(gameState)
+
+    def _computeRoute(self, gameState):
+        data = gameState.data
+        foods = data.food.data
+        height, width, half = self._height, self._width, self._half
+        red = self.red
+        # deliver the food to the bound to gain actual score
+        bounds = self._bound
+        foods = set(
+            (x, y)
+            for x in (xrange(half, width) if red else xrange(half))
+            for y in xrange(height)
+            if foods[x][y]
+        )
+        distancer = self.distancer
+
+        # Dijkstra (or variant of Uniform Cost Search) implementation
+        pos = data.agentStates[self.index].configuration.pos
+        path = []
+        q = [(0, pos, path, foods)]
+        while q:
+            dist, pos, path, fs = heappop(q)
+
+            if pos in bounds and not fs:
+                break
+
+            if fs:
+                npos, ndist = min(
+                    ((np, dist + distancer.getDistance(pos, np)) for np in fs),
+                    key=itemgetter(1)
+                )
+
+                nfs = fs.copy()
+                nfs.remove(npos)
+                heappush(q, (ndist, npos, path + [npos], nfs))
+            else:
+                npos, ndist = min(
+                    (
+                        (np, dist + distancer.getDistance(pos, np))
+                        for np in bounds
+                    ),
+                    key=itemgetter(1)
+                )
+                heappush(q, (ndist, npos, path + [npos], None))
+        # reverse the path to utilise the efficiency of list.pop
+        path.reverse()
+
+        self._actions = path
+
+    def observationFunction(self, gameState):
+        """
+        Abuse this function to obtain a full game state from the controller
+        """
+        return gameState
+
     def chooseAction(self, gameState):
         """
-        Picks among the actions with the highest Q(s,a).
+        Choose an action based on the current status of the agent
         """
-        actions = gameState.getLegalActions(self.index)
 
-        # You can profile your evaluation time by uncommenting these lines
-        # start = time.time()
-        values = [self.evaluate(gameState, a) for a in actions]
-        # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
-        maxValue = max(values)
-        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-        return random.choice(bestActions)
+        return self.defenseAction(gameState) \
+            if self._defense \
+            else self.offenseAction(gameState)
 
-    def getSuccessor(self, gameState, action):
+    def defenseAction(self, gameState):
         """
-        Finds the next successor which is a grid position (location tuple).
+        Choose a defensive action
         """
-        successor = gameState.generateSuccessor(self.index, action)
-        pos = successor.getAgentState(self.index).getPosition()
-        if pos != nearestPoint(pos):
-          # Only half a grid position was covered
-          return successor.generateSuccessor(self.index, action)
-        else:
-          return successor
+        index = self.index
+        red = self.red
+        data = gameState.data
+        agentStates = data.agentStates
+        agentState = agentStates[index]
+        pos = agentState.configuration.pos
+        distancer = self.distancer
 
-    def evaluate(self, gameState, action):
+        # obtain the states of opponent agents
+        states = [
+            agentStates[i]
+            for i in (gameState.blueTeam if red else gameState.redTeam)
+        ]
+        vals = [(s.numCarrying, s.configuration.pos) for s in states]
+        p = min(((-c, distancer.getDistance(pos, p), p) for c, p in vals))[2]
+        a = [
+            (a, gameState.generateSuccessor(index, a))
+            for a in gameState.getLegalActions(index)
+        ]
+        a = [
+            (a, successor)
+            for a, successor in a
+            if not successor.data.agentStates[index].isPacman
+        ]
+
+        return min(
+            (
+                (
+                    a, distancer.getDistance(
+                        successor.data.agentStates[index].configuration.pos,
+                        p
+                    )
+                )
+                for a, successor in a
+            ),
+            key=itemgetter(1)
+        )[0]
+
+    def _evalOffense(self, gameState):
+        fs = [0] * 6
+
+        data = gameState.data
+        agentStates = data.agentStates
+        agent = agentStates[self.index]
+        pos = agent.configuration.pos
+        maxDist = self._height * self._width
+        distancer = self.distancer
+        red = self.red
+
+        # current score
+        fs[0] = data.score
+
+        for i in gameState.redTeam:
+            agentState = agentStates[i]
+            if red:
+                # the number of food carried
+                fs[1] += agentState.numCarrying
+            else:
+                if agent.isPacman and agentState.scaredTimer == 0:
+                    fs[2] += maxDist - distancer.getDistance(
+                        pos, agentState.configuration.pos
+                    )
+                if agentState.scaredTimer > 0:
+                    fs[4] += 1
+        for i in gameState.blueTeam:
+            agentState = agentStates[i]
+            if red:
+                if agent.isPacman and agentState.scaredTimer == 0:
+                    fs[2] += maxDist - distancer.getDistance(
+                        pos, agentState.configuration.pos
+                    )
+                if agentState.scaredTimer > 0:
+                    fs[4] += 1
+            else:
+                fs[1] += agentState.numCarrying
+
+        fs[3] = len(gameState.getLegalActions()) - 1
+
+        fs[5] = agent.isPacman
+
+        weights = [maxDist, maxDist / 2, -2, 1, maxDist]
+        return sum(f * w for f, w in zip(fs, weights))
+
+    def offenseAction(self, gameState):
         """
-        Computes a linear combination of features and feature weights
+        Choose an offensive action based on current circumstance, could either
+        be the followings
+        * following the route
+        * escape if in danger
         """
-        features = self.getFeatures(gameState, action)
-        weights = self.getWeights(gameState, action)
-        return features * weights
+        index = self.index
+        red = self.red
+        agentStates = gameState.data.agentStates
+        agentState = agentStates[index]
 
-    def getFeatures(self, gameState, action):
-        features = util.Counter()
-        successor = self.getSuccessor(gameState, action)
-        #successor pos
-        next_x, next_y =successor.getAgentState(self.index).getPosition()
-        
-        #number of remaining food on our side
-        food = self.getFoodYouAreDefending(gameState)
-        foodList = food.asList()
-        features['foodRemaining'] = len(foodList)
-    
-        #distance to the farthest food
-        if len(foodList) > 0:
-            #compute the minimum mazeDistance to food
-            maxFood = max([self.getMazeDistance((next_x, next_y), foodPos) for foodPos in foodList])
-            features['distanceToFood'] = maxFood
-    
-        #distance to the nearest enermy
-        enemies = [successor.getAgentState(a) for a in self.getOpponents(successor)]
-        ghosts = filter(lambda x: not x.isPacman and x.getPosition() != None, enemies)
-        pacmen = filter(lambda x: x.isPacman and x.getPosition() != None, enemies)
-    
-        #distance to the nearest ghost
-        if len(ghosts) > 0:
-            minGhost = min([self.getMazeDistance((next_x, next_y), ghost.getPosition()) for ghost in ghosts])
-            #ignore if enermy is scared
-            scaredTime = min([successor.getAgentState(ghost).scaredTimer for ghost in self.getOpponents(successor)])
-            if (scaredTime > 0): minGhost = 0
-            features['distanceToGhost'] = minGhost
-            if minGhost < 4:
-                self.danger = True;
-        else:
-            self.danger = False;
-    
-        #distance to the nearest pacman
-        if len(pacmen) > 0:
-            minPacman = min([self.getMazeDistance((next_x, next_y), pacman.getPosition()) for pacman in pacmen])
-            features['distanceToPacman'] = minPacman
-    
-        #distance to the nearest defending capsule
-        if self.red:
-            capsules = gameState.getBlueCapsules()
-        else:
-            capsules = gameState.getRedCapsules()
-    
-        if len(capsules) > 0:
-            #compute the minimum mazeDistance to capsule
-            minCapsule = min([self.getMazeDistance((next_x, next_y), capsulePos) for capsulePos in capsules])
-            features['distanceToCapsule'] = minCapsule
-    
-        #determine if is Pacman
-        features['isPacman'] = successor.getAgentState(self.index).isPacman
-    
-        #determine if is stuck
-        features['stuck'] = action == Directions.STOP
+        distancer = self.distancer
+        pos = agentState.configuration.pos
+        states = [
+            agentStates[i]
+            for i in (gameState.blueTeam if red else gameState.redTeam)
+        ]
+        if any(
+            not s.isPacman and s.scaredTimer == 0 and distancer.getDistance(
+                s.configuration.pos, pos
+            ) < 5
+            for s in states
+        ):
+            self._recompute = True
+            self._prevCarry = agentState.numCarrying
+            return MCTS(index, gameState, self._evalOffense)
 
-        #score feature from baseline.py
-        features['successorScore'] = self.getScore(successor)
-    
-        #distance to teammate
-        team = [teammate for teammate in self.getTeam(successor) if teammate != self.index]
-        distanceToTeamate = min([self.getMazeDistance((next_x, next_y), successor.getAgentState(teammate).getPosition()) for teammate in team])
-        #ignore teammate if is already far away
-        #if (distanceToTeamate) > 10: distanceToTeamate = 0
-        features['distanceToTeammate'] = distanceToTeamate
-        
-        return features
-    
-    def getWeights(self, gameState, action):
-        return {'foodRemaining': 1000, 'distanceToFood': -3, 'foodCarrying': 0,
-            'distanceToGhost': 1, 'distanceToPacman': -1000, 'distanceToCapsule': -1,
-            'isPacman': -1, 'distanceToReturn' : 0, 'stuck': -50, 'successorScore': 1000,
-            'distanceToTeammate': 0}
-        
-        
-    
+        if self._recompute or self._prevCarry > agentState.numCarrying:
+            self._computeRoute(gameState)
+            self._recompute = False
+        self._prevCarry = agentState.numCarrying
+
+        actions = self._actions
+        if agentState.configuration.pos == actions[-1]:
+            actions.pop()
+        cdest = actions[-1]
+        return min(
+            (
+                (
+                    a,
+                    distancer.getDistance(gameState.generateSuccessor(
+                        index, a
+                    ).data.agentStates[index].configuration.pos, cdest)
+                )
+                for a in gameState.getLegalActions(index)
+            ),
+            key=itemgetter(1)
+        )[0]
