@@ -168,7 +168,6 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         food = agentStates[target]
 
         penalty = 2 if agent.scaredTimer > 0 else 0
-        pos = agent.configuration.pos
         fpos = food.configuration.pos
 
         distancer = self.distancer
@@ -265,6 +264,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         h = min(distancer.getDistance(pos, b) for b in bounds)
         q = [(h, h, 0, pos, path)]
         escaped = False
+        visited = set()
         while q:
             _, _, g, pos, path = heappop(q)
 
@@ -272,10 +272,12 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                 escaped = True
                 break
 
+            visited.add(pos)
+
             x, y = pos
             for dx, dy in ((0, 1), (1, 0), (0, -1), (-1, 0)):
                 npos = nx, ny = x + dx, y + dy
-                if not walls[nx][ny]:
+                if not walls[nx][ny] and npos not in visited:
                     h = min(distancer.getDistance(npos, b) for b in bounds)
                     ng = g + 1
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
