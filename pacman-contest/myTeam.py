@@ -160,6 +160,38 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             if self._defense \
             else self.offenseAction(gameState)
 
+    def _target(self, gameState, target):
+        index = self.index
+        agentStates = gameState.data.agentStates
+        agent = agentStates[index]
+        food = agentStates[target]
+
+        penalty = 2 if agent.scaredTimer > 0 else 0
+        pos = agent.configuration.pos
+        fpos = food.configuration.pos
+
+        distancer = self.distancer
+        successors = [
+            (a, gameState.generateSuccessor(index, a))
+            for a in gameState.getLegalActions(index)
+        ]
+        successors = [
+            (a, successor)
+            for a, successor in successors
+            if not successor.data.agentStates[index].isPacman
+        ]
+        dist = [
+            (
+                a, distancer.getDistance(
+                    succ.data.agentStates[index].configuration.pos, fpos
+                )
+            ) for a, succ in successors
+        ]
+        dist = [(d, a) for a, d in dist if d >= penalty]
+
+        minval = min(dist)[0]
+        return random.choice([a for d, a in dist if d == minval])
+
     def defenseAction(self, gameState):
         """
         Choose a defensive action
@@ -172,38 +204,32 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         pos = agentState.configuration.pos
         distancer = self.distancer
 
-        # obtain the states of opponent agents
-        states = [
-            agentStates[i]
-            for i in (gameState.blueTeam if red else gameState.redTeam)
-        ]
-        vals = [(s.numCarrying, s.configuration.pos) for s in states]
-        p = min(((-c, distancer.getDistance(pos, p), p) for c, p in vals))[2]
-        a = [
-            (a, gameState.generateSuccessor(index, a))
-            for a in gameState.getLegalActions(index)
-        ]
-        a = [
-            (a, successor)
-            for a, successor in a
-            if not successor.data.agentStates[index].isPacman
+        nt = 0
+        t = None
+        pnc = 0
+        target = []
+        for i in (gameState.blueTeam if red else gameState.redTeam):
+            agentState = agentStates[i]
+            nc = agentState.numCarrying
+            if nc > 0:
+                nt += 1
+                if nc > pnc:
+                    pnc = nc
+                    t = i
+            target.append((i, agentState.configuration.pos))
+
+        if nt > 0:
+            return self._target(gameState, t)
+
+        dist = [
+            (i, distancer.getDistance(pos, p))
+            for i, p in target
         ]
 
-        return min(
-            (
-                (
-                    a, distancer.getDistance(
-                        successor.data.agentStates[index].configuration.pos,
-                        p
-                    )
-                )
-                for a, successor in a
-            ),
-            key=itemgetter(1)
-        )[0]
+        return self._target(gameState, min(dist, key=itemgetter(1))[0])
 
     def _eval(self, gameState, index, red):
-        fs = [0] * 6
+        fs = [0] * 5
 
         data = gameState.data
         agentStates = data.agentStates
