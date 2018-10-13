@@ -236,6 +236,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         return self._target(gameState, min(dist, key=itemgetter(1, 2))[0])
 
     def _computeEscape(self, gameState):
+        index = self.index
         data = gameState.data
         agentStates = data.agentStates
         bounds = self._bound
@@ -253,7 +254,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                 walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
                     walls[x][y - 1] = walls[x][y] = True
 
-        agent = agentStates[self.index]
+        agent = agentStates[index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
         if not _recompute:
             nx, ny = self._escapes.pop()
@@ -279,9 +280,16 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                     ng = g + 1
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
 
+        if not escaped:
+            self._defense = True
+            self._instances[(index // 2 + 1) % 2]._defense = False
+            return Directions.STOP
+
         path.reverse()
         x, y = agent.configuration.pos
         nx, ny = path.pop()
+        if not path:
+            self._escape = False
 
         return Actions.vectorToDirection((nx - x, ny - y))
 
@@ -420,6 +428,9 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         * following the route
         * escape if in danger
         """
+        if self._escape:
+            return self._computeEscape(gameState)
+
         index = self.index
         red = self.red
         agentStates = gameState.data.agentStates
@@ -440,10 +451,10 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             self._recompute = True
             nc = self._prevCarry = agentState.numCarrying
             if nc > 0:
+                self._escape = True
                 return self._computeEscape(gameState)
             return self._minimax(gameState, 12)
 
-        self._escape = False
         if self._recompute or self._prevCarry > agentState.numCarrying:
             self._computeRoute(gameState)
             self._recompute = False
