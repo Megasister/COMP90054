@@ -68,7 +68,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         self.red = red
         self._defense = defense
         self._height = self._width = self._half = self._bound = \
-            self._actions = None
+            self._actions = self._escapes = None
         self._prevCarry = 0
         self._recompute = False
 
@@ -233,6 +233,45 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         ]
 
         return self._target(gameState, min(dist, key=itemgetter(1, 2))[0])
+
+    def _computeEscape(self, gameState):
+        data = gameState.data
+        agentStates = data.agentStates
+        bounds = self._bound
+        distancer = self.distancer
+
+        walls = data.layout.walls.data
+        for i in (gameState.blueTeam if self.red else gameState.redTeam):
+            agentState = agentStates[i]
+            if not agentState.isPacman:
+                x, y = agentState.configuration.pos
+                walls[x][y] = True
+
+        # A* to escape
+        pos = agentStates[self.index].configuration.pos
+        path = []
+        h = min(distancer.getDistance(pos, b) for b in bounds)
+        q = [(h, h, 0, pos, path)]
+        escaped = False
+        while q:
+            _, _, g, pos, path = heappop(q)
+
+            if pos in bounds:
+                escaped = True
+                break
+
+            x, y = pos
+            for dx, dy in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+                npos = nx, ny = x + dx, y + dy
+                if not walls[nx][ny]:
+                    h = min(distancer.getDistance(npos, b) for b in bounds)
+                    ng = g + 1
+                    heappush(q, (ng + h, h, ng, path + [npos]))
+
+        # reverse the path to utilise the efficiency of list.pop
+        path.reverse()
+
+        self._escapes = path
 
     def _eval(self, gameState, index, red):
         fs = [0] * 6
