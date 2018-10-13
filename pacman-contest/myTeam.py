@@ -68,9 +68,10 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         self.red = red
         self._defense = defense
         self._height = self._width = self._half = self._bound = \
-            self._actions = None
+            self._actions = self._escapes = None
         self._prevCarry = 0
         self._recompute = False
+        self._escape = False
 
         # record each instance created
         self._instances[index // 2] = self
@@ -240,18 +241,25 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         bounds = self._bound
         distancer = self.distancer
 
+        _recompute = not self._escape
         walls = data.layout.walls.data
         for i in (gameState.blueTeam if self.red else gameState.redTeam):
             agentState = agentStates[i]
             if not agentState.isPacman:
                 x, y = agentState.configuration.pos
-                x, y = int(x), int(y)
+                pos = x, y = int(x), int(y)
+                if self._escapes is None or pos in self._escapes:
+                    _recompute = True
                 walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
                     walls[x][y - 1] = walls[x][y] = True
 
-        # A* to escape
         agent = agentStates[self.index]
-        pos = agent.configuration.pos
+        x, y = pos = tuple(map(int, agent.configuration.pos))
+        if not _recompute:
+            nx, ny = self._escapes.pop()
+            return Actions.vectorToDirection((nx - x, ny - y))
+
+        # A* to escape
         path = []
         h = min(distancer.getDistance(pos, b) for b in bounds)
         q = [(h, h, 0, pos, path)]
@@ -264,7 +272,6 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                 break
 
             x, y = pos
-            x, y = int(x), int(y)
             for dx, dy in ((0, 1), (1, 0), (0, -1), (-1, 0)):
                 npos = nx, ny = x + dx, y + dy
                 if not walls[nx][ny]:
@@ -272,8 +279,9 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                     ng = g + 1
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
 
+        path.reverse()
         x, y = agent.configuration.pos
-        nx, ny = path[0]
+        nx, ny = path.pop()
 
         return Actions.vectorToDirection((nx - x, ny - y))
 
@@ -432,10 +440,10 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             self._recompute = True
             nc = self._prevCarry = agentState.numCarrying
             if nc > 0:
-                self._escape = True
                 return self._computeEscape(gameState)
             return self._minimax(gameState, 12)
 
+        self._escape = False
         if self._recompute or self._prevCarry > agentState.numCarrying:
             self._computeRoute(gameState)
             self._recompute = False
