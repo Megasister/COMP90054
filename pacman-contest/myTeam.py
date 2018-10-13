@@ -174,6 +174,7 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
         successors = [
             (a, gameState.generateSuccessor(index, a))
             for a in gameState.getLegalActions(index)
+            if a != Directions.STOP
         ]
         successors = [
             (a, successor)
@@ -284,7 +285,9 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
 
         if not escaped:
             self._defense = True
-            self._instances[(index // 2 + 1) % 2]._defense = False
+            teammate = self._instances[(index // 2 + 1) % 2]
+            teammate._defense = False
+            teammate._computeRoute(gameState)
             return Directions.STOP
 
         path.reverse()
