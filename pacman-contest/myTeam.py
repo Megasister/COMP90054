@@ -216,20 +216,26 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
                 if nc > pnc:
                     pnc = nc
                     t = i
-            target.append((i, agentState.configuration.pos))
+            target.append((i, agentState))
 
         if nt > 0:
             return self._target(gameState, t)
 
         dist = [
-            (i, distancer.getDistance(pos, p))
-            for i, p in target
+            (
+                i,
+                -a.isPacman,
+                distancer.getDistance(
+                    pos, a.configuration.pos
+                )
+            )
+            for i, a in target
         ]
 
-        return self._target(gameState, min(dist, key=itemgetter(1))[0])
+        return self._target(gameState, min(dist, key=itemgetter(1, 2))[0])
 
     def _eval(self, gameState, index, red):
-        fs = [0] * 5
+        fs = [0] * 6
 
         data = gameState.data
         agentStates = data.agentStates
@@ -245,27 +251,38 @@ class AbuseMonteCarloAgent(CaptureAgent, object):
             if red:
                 fs[1] += agentState.numCarrying
             else:
-                if agent.isPacman and agentState.scaredTimer == 0:
+                if (
+                    agent.isPacman and
+                    not agentState.isPacman and
+                    agentState.scaredTimer == 0
+                ):
                     fs[2] += distancer.getDistance(
                         pos, agentState.configuration.pos
                     )
                 if agentState.scaredTimer > 0:
-                    fs[4] += 1
+                    fs[3] += 1
         for i in gameState.blueTeam:
             agentState = agentStates[i]
             if red:
-                if agent.isPacman and agentState.scaredTimer == 0:
+                if (
+                    agent.isPacman and
+                    not agentState.isPacman and
+                    agentState.scaredTimer == 0
+                ):
                     fs[2] += distancer.getDistance(
                         pos, agentState.configuration.pos
                     )
                 if agentState.scaredTimer > 0:
-                    fs[4] += 1
+                    fs[3] += 1
             else:
                 fs[1] += agentState.numCarrying
 
-        fs[3] = len(gameState.getLegalActions(index))
+        fs[4] = agent.isPacman
 
-        weights = [5, 2, 2, 1, 1]
+        if agent.numCarrying > 0:
+            fs[5] = min(distancer.getDistance(b, pos) for b in self._bound)
+
+        weights = [10000, 5, 2, 1, 100, -10]
         return sum(f * w for f, w in zip(fs, weights))
 
     def _minimax(self, gameState, depth):
