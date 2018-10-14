@@ -14,7 +14,8 @@
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Reverse.coverage" NAME="Test Reverse Coverage Results" MODIFIED="1539127751391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$basline.coverage" NAME="basline Coverage Results" MODIFIED="1539502058009" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Intra.coverage" NAME="Test Intra Coverage Results" MODIFIED="1539341703306" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
-    <SUITE FILE_PATH="coverage/comp90054_pacman$Self.coverage" NAME="Self Coverage Results" MODIFIED="1539500081668" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
+    <SUITE FILE_PATH="coverage/comp90054_pacman$Self.coverage" NAME="Self Coverage Results" MODIFIED="1539503464998" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
+    <SUITE FILE_PATH="coverage/comp90054_pacman$Self_Prev.coverage" NAME="Self Prev Coverage Results" MODIFIED="1539503098599" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Baseline.coverage" NAME="Test Baseline Coverage Results" MODIFIED="1538099660797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test.coverage" NAME="Test Coverage Results" MODIFIED="1539500163412" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_MyTeam.coverage" NAME="Test MyTeam Coverage Results" MODIFIED="1538964636252" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
@@ -60,13 +61,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="188" />
-          <entry key="py" value="48372" />
+          <entry key="py" value="48547" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="188" />
-          <entry key="Python" value="48372" />
+          <entry key="Python" value="48547" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.js.language.service.starts" />
@@ -81,7 +82,7 @@
             <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
               <provider selected="true" editor-type-id="text-editor">
                 <state relative-caret-position="254">
-                  <caret line="176" column="70" lean-forward="true" selection-start-line="176" selection-start-column="70" selection-end-line="176" selection-end-column="70" />
+                  <caret line="435" lean-forward="true" selection-start-line="435" selection-end-line="435" />
                 </state>
               </provider>
             </entry>
@@ -206,8 +207,8 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="-1844" />
-    <option name="y" value="-7" />
+    <option name="x" value="-1643" />
+    <option name="y" value="-9" />
     <option name="width" value="1936" />
     <option name="height" value="1056" />
   </component>
@@ -275,7 +276,29 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.basline">
+  <component name="RunManager" selected="Python.Self">
+    <configuration name="Self Prev" type="PythonConfigurationType" factoryName="Python">
+      <module name="comp90054-pacman" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\laitingsheng\Anaconda3\envs\Python2\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/pacman-contest" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pacman-contest/capture.py" />
+      <option name="PARAMETERS" value="-r myTeam.py -b minimax.py -n 10" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="Self" type="PythonConfigurationType" factoryName="Python">
       <module name="comp90054-pacman" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -368,6 +391,7 @@
       <item itemvalue="Python.Test" />
       <item itemvalue="Python.basline" />
       <item itemvalue="Python.Self" />
+      <item itemvalue="Python.Self Prev" />
     </list>
   </component>
   <component name="SvnConfiguration">
@@ -585,7 +609,7 @@
     <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="254">
-          <caret line="176" column="70" lean-forward="true" selection-start-line="176" selection-start-column="70" selection-end-line="176" selection-end-column="70" />
+          <caret line="435" lean-forward="true" selection-start-line="435" selection-end-line="435" />
         </state>
       </provider>
     </entry>

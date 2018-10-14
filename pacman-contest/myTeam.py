@@ -115,8 +115,14 @@ class AbuseAStarAgent(CaptureAgent, object):
 
         # determine the positions of the opponents
         poss = [
-            agentStates[i].configuration.pos
+            agentStates[i]
             for i in (gameState.blueTeam if red else gameState.redTeam)
+        ]
+        poss = [
+            s.configuration.pos
+            for s in poss
+            # only agent which is a ghost and not scared will mask the food
+            if not s.isPacman and s.scaredTimer == 0
         ]
 
         distancer = self.distancer
@@ -342,8 +348,8 @@ class AbuseAStarAgent(CaptureAgent, object):
             if manhattanDistance(pos, _prevPos) > 1:
                 self._escape = False
                 self._recompute = True
+                self._chasepath = None
                 # self._teammate._notifyReborn()
-
         self._prevPos = pos
 
         if self._escape:
@@ -428,6 +434,15 @@ class AbuseAStarAgent(CaptureAgent, object):
         scare = agent.scaredTimer > 0
         walls = data.layout.walls.data
 
+        _prevPos = self._prevPos
+        if _prevPos is not None:
+            if manhattanDistance(pos, _prevPos) > 1:
+                self._escape = False
+                self._recompute = True
+                self._chasepath = None
+                # self._teammate._notifyReborn()
+        self._prevPos = pos
+
         target = None
         rs = []
         pnc = 0
@@ -492,7 +507,7 @@ class AbuseAStarAgent(CaptureAgent, object):
             if scare:
                 tx, ty = target
                 sur = [
-                    (tx + cx, ty + cy) for cx, cy in self._closes
+                    (int(tx + cx), int(ty + cy)) for cx, cy in self._closes
                 ]
                 sur = [
                     (x, y) for x, y in sur if not walls[x][y]
@@ -514,7 +529,7 @@ class AbuseAStarAgent(CaptureAgent, object):
         if scare:
             tx, ty = mb
             sur = [
-                (tx + cx, ty + cy) for cx, cy in self._closes
+                (int(tx + cx), int(ty + cy)) for cx, cy in self._closes
             ]
             sur = [
                 (x, y) for x, y in sur if not walls[x][y]
