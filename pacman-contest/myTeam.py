@@ -64,7 +64,8 @@ class AbuseAStarAgent(CaptureAgent, object):
         self.red = red
         self._defense = defense
         self._height = self._width = self._half = self._bound = \
-            self._actions = self._escapes = None
+            self._actions = self._escapes = self._teammate = \
+            self._prevPos = None
         self._prevCarry = 0
         self._maskUpdated = self._recompute = self._escape = False
 
@@ -91,6 +92,10 @@ class AbuseAStarAgent(CaptureAgent, object):
         self._bound = set(
             (bound, y) for y in xrange(height) if not walls[bound][y]
         )
+
+        self._teammate = self._defense = self._instances[
+            (self.index // 2 + 1) % 2
+        ]
 
     def _updateMask(self, gameState):
         agentStates = gameState.data.agentStates
@@ -130,26 +135,29 @@ class AbuseAStarAgent(CaptureAgent, object):
 
     def _getFoodNext(self, gameState):
         self._escape = False
-        print("prev eat:", not self._recompute)
 
         index = self.index
+        red = self.red
         data = gameState.data
+        half = data.layout.width // 2
         agentStates = data.agentStates
         distancer = self.distancer
 
         _recompute = self._recompute or self._maskUpdated
         walls = data.layout.walls.data
         _actions = self._actions
-        if not _recompute:
-            for i in (gameState.blueTeam if self.red else gameState.redTeam):
-                agentState = agentStates[i]
-                if not agentState.isPacman:
-                    x, y = agentState.configuration.pos
-                    pos = x, y = int(x), int(y)
-                    if _actions is None or pos in _actions:
-                        _recompute = True
-                    walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
-                        walls[x][y - 1] = walls[x][y] = True
+        for i in (gameState.blueTeam if self.red else gameState.redTeam):
+            agentState = agentStates[i]
+            if not agentState.isPacman and agentState.scaredTimer == 0:
+                x, y = agentState.configuration.pos
+                pos = x, y = int(x), int(y)
+                if _actions is None or pos in _actions:
+                    _recompute = True
+                if red and x - 1 >= half or not red and x - 1 < half:
+                    walls[x - 1][y] = True
+                if red and x + 1 >= half or not red and x + 1 < half:
+                    walls[x + 1][y] = True
+                walls[x][y + 1] = walls[x][y - 1] = walls[x][y] = True
 
         agent = agentStates[index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
@@ -209,7 +217,6 @@ class AbuseAStarAgent(CaptureAgent, object):
 
     def _getEscapeNext(self, gameState):
         self._recompute = True
-        print("prev escape:", self._escape)
 
         index = self.index
         data = gameState.data
@@ -220,16 +227,15 @@ class AbuseAStarAgent(CaptureAgent, object):
         _recompute = not self._escape
         walls = data.layout.walls.data
         _escapes = self._escapes
-        if not _recompute:
-            for i in (gameState.blueTeam if self.red else gameState.redTeam):
-                agentState = agentStates[i]
-                if not agentState.isPacman:
-                    x, y = agentState.configuration.pos
-                    pos = x, y = int(x), int(y)
-                    if _escapes is None or pos in _escapes:
-                        _recompute = True
-                    walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
-                        walls[x][y - 1] = walls[x][y] = True
+        for i in (gameState.blueTeam if self.red else gameState.redTeam):
+            agentState = agentStates[i]
+            if not agentState.isPacman:
+                x, y = agentState.configuration.pos
+                pos = x, y = int(x), int(y)
+                if _escapes is None or pos in _escapes:
+                    _recompute = True
+                walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
+                    walls[x][y - 1] = walls[x][y] = True
 
         agent = agentStates[index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
@@ -263,10 +269,10 @@ class AbuseAStarAgent(CaptureAgent, object):
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
 
         if not escaped:
-            self._defense = self._instances[
-                (index // 2 + 1) % 2
-            ]._notifyFailEscape()
-            return None
+            # self._teammate.notifyEscFail()
+            self._recompute = True
+            self._escape = False
+            return Directions.STOP
 
         path.reverse()
         x, y = agent.configuration.pos
@@ -280,9 +286,6 @@ class AbuseAStarAgent(CaptureAgent, object):
         return Actions.vectorToDirection((nx - x, ny - y))
 
     def _offenseAction(self, gameState):
-        if self._escape:
-            return self._getEscapeNext(gameState)
-
         index = self.index
         red = self.red
         agentStates = gameState.data.agentStates
@@ -290,6 +293,19 @@ class AbuseAStarAgent(CaptureAgent, object):
 
         distancer = self.distancer
         pos = agentState.configuration.pos
+
+        _prevPos = self._prevPos
+        if _prevPos is not None:
+            if manhattanDistance(pos, _prevPos) > 1:
+                self._escape = False
+                self._recompute = True
+                # self._teammate._notifyReborn()
+
+        self._prevPos = pos
+
+        if self._escape:
+            return self._getEscapeNext(gameState)
+
         states = [
             agentStates[i]
             for i in (gameState.blueTeam if red else gameState.redTeam)
@@ -303,7 +319,75 @@ class AbuseAStarAgent(CaptureAgent, object):
             self._recompute = True
             nc = self._prevCarry = agentState.numCarrying
             if nc > 0:
-                self._escape = True
                 return self._getEscapeNext(gameState)
 
         return self._updateMask(gameState)._getFoodNext(gameState)
+
+    def _target(self, gameState, target):
+        index = self.index
+        agentStates = gameState.data.agentStates
+        agent = agentStates[index]
+        food = agentStates[target]
+
+        penalty = 2 if agent.scaredTimer > 0 else 0
+        fpos = food.configuration.pos
+
+        distancer = self.distancer
+        successors = [
+            (a, gameState.generateSuccessor(index, a))
+            for a in gameState.getLegalActions(index)
+            if a != Directions.STOP
+        ]
+        successors = [
+            (a, successor)
+            for a, successor in successors
+            if not successor.data.agentStates[index].isPacman
+        ]
+        dist = [
+            (
+                a, distancer.getDistance(
+                    succ.data.agentStates[index].configuration.pos, fpos
+                )
+            ) for a, succ in successors
+        ]
+        dist = [(d, a) for a, d in dist if d >= penalty]
+
+        minval = min(dist)[0]
+        return random.choice([a for d, a in dist if d == minval])
+
+    def _defenseAction(self, gameState):
+        index = self.index
+        red = self.red
+        data = gameState.data
+        agentStates = data.agentStates
+        agentState = agentStates[index]
+        pos = agentState.configuration.pos
+        distancer = self.distancer
+
+        nt = 0
+        t = None
+        pnc = 0
+        target = []
+        for i in (gameState.blueTeam if red else gameState.redTeam):
+            agentState = agentStates[i]
+            nc = agentState.numCarrying
+            if nc > 0:
+                nt += 1
+                if nc > pnc:
+                    pnc = nc
+                    t = i
+            target.append((i, agentState))
+
+        if nt > 0:
+            return self._target(gameState, t)
+
+        dist = [
+            (
+                i,
+                -a.isPacman,
+                distancer.getDistance(
+                    pos, a.configuration.pos
+                )
+            )
+            for i, a in target
+        ]
