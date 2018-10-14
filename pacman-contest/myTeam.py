@@ -146,7 +146,7 @@ class AbuseAStarAgent(CaptureAgent, object):
                         _leftFood.add(pos)
 
         # route needs to be recomputed if the food set changed
-        self._maskUpdated = not _maskFood == self._maskFood
+        self._maskUpdated = _maskFood != self._maskFood
 
         self._maskFood = _maskFood
         self._leftFood = _leftFood
@@ -171,15 +171,17 @@ class AbuseAStarAgent(CaptureAgent, object):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
                 # pretend there are walls around the opponent agents if they are
-                # not scared
+                # not scared ghost
                 x, y = agentState.configuration.pos
                 pos = x, y = int(x), int(y)
                 if _actions is None or pos in _actions:
                     _recompute = True
-                if red and x - 1 >= half or not red and x - 1 < half:
-                    walls[x - 1][y] = True
-                if red and x + 1 >= half or not red and x + 1 < half:
-                    walls[x + 1][y] = True
+                nx = x - 1
+                if red and nx >= half or not red and nx < half:
+                    walls[nx][y] = True
+                nx = x + 1
+                if red and nx >= half or not red and nx < half:
+                    walls[nx][y] = True
                 walls[x][y + 1] = walls[x][y - 1] = walls[x][y] = True
 
         agent = agentStates[index]
@@ -224,6 +226,10 @@ class AbuseAStarAgent(CaptureAgent, object):
                     h = min(distancer.getDistance(npos, f) for f in leftFood)
                     ng = g + 1
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
+
+        if not path:
+            # TODO: change behaviour
+            return Directions.STOP
 
         path.reverse()
         x, y = agent.configuration.pos
@@ -270,7 +276,7 @@ class AbuseAStarAgent(CaptureAgent, object):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
                 # pretend there are walls around the opponent agents if they are
-                # not scared
+                # not scared ghost
                 x, y = agentState.configuration.pos
                 pos = x, y = int(x), int(y)
                 if _escapes is None or pos in _escapes:
@@ -293,7 +299,6 @@ class AbuseAStarAgent(CaptureAgent, object):
         path = []
         h = min(distancer.getDistance(pos, b) for b in bounds)
         q = [(h, h, 0, pos, path)]
-        escaped = False
         visited = set()
         while q:
             _, _, g, pos, path = heappop(q)
@@ -312,15 +317,8 @@ class AbuseAStarAgent(CaptureAgent, object):
                     ng = g + 1
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
 
-        x, y = agent.configuration.pos
-        if not escaped:
-            # self._teammate.notifyEscFail()
-            self._recompute = True
-            self._escape = False
-            if path:
-                path.reverse()
-                nx, ny = path.pop()
-                return Actions.vectorToDirection((nx - x, ny - y))
+        if not path:
+            # TODO: change behaviour
             return Directions.STOP
 
         path.reverse()
