@@ -14,7 +14,7 @@
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Reverse.coverage" NAME="Test Reverse Coverage Results" MODIFIED="1539127751391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Intra.coverage" NAME="Test Intra Coverage Results" MODIFIED="1539341703306" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_Baseline.coverage" NAME="Test Baseline Coverage Results" MODIFIED="1538099660797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
-    <SUITE FILE_PATH="coverage/comp90054_pacman$Test.coverage" NAME="Test Coverage Results" MODIFIED="1539488101702" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
+    <SUITE FILE_PATH="coverage/comp90054_pacman$Test.coverage" NAME="Test Coverage Results" MODIFIED="1539493248797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_MyTeam.coverage" NAME="Test MyTeam Coverage Results" MODIFIED="1538964636252" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
     <SUITE FILE_PATH="coverage/comp90054_pacman$Test_testTeam.coverage" NAME="Test testTeam Coverage Results" MODIFIED="1539089256222" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pacman-contest" />
   </component>
@@ -58,13 +58,13 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="188" />
-          <entry key="py" value="43541" />
+          <entry key="py" value="45244" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="188" />
-          <entry key="Python" value="43541" />
+          <entry key="Python" value="45244" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.js.language.service.starts" />
@@ -78,11 +78,12 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="398">
-                  <caret line="360" column="29" lean-forward="true" selection-start-line="360" selection-start-column="29" selection-end-line="360" selection-end-column="29" />
+                <state relative-caret-position="254">
+                  <caret line="393" column="12" selection-start-line="393" selection-start-column="12" selection-end-line="393" selection-end-column="12" />
                   <folding>
-                    <marker date="1539488243392" expanded="true" signature="1564:1567" ph="..." />
-                    <marker date="1539488243392" expanded="true" signature="9440:9446" ph="..." />
+                    <marker date="1539493387703" expanded="true" signature="1565:1568" ph="..." />
+                    <marker date="1539493387703" expanded="true" signature="12724:12743" ph="..." />
+                    <marker date="1539493387703" expanded="true" signature="13771:14169" ph="..." />
                   </folding>
                 </state>
               </provider>
@@ -95,8 +96,8 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/pacman-contest/minimax.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="1166">
-                  <caret line="227" column="9" lean-forward="true" selection-start-line="157" selection-start-column="4" selection-end-line="227" selection-end-column="9" />
+                <state relative-caret-position="-322">
+                  <caret line="176" column="9" lean-forward="true" selection-start-line="176" selection-start-column="9" selection-end-line="176" selection-end-column="9" />
                 </state>
               </provider>
             </entry>
@@ -146,9 +147,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>Grid</find>
-      <find>_bound</find>
-      <find>vectorToDi</find>
       <find>_escape</find>
       <find>self._escape =</find>
       <find>self.index</find>
@@ -176,7 +174,13 @@
       <find>generate</find>
       <find>getLegalA</find>
       <find>index</find>
+      <find>((0, 1), (1, 0), (0, -1), (-1, 0))</find>
+      <find>self._defnse</find>
+      <find>self._defen</find>
     </findStrings>
+    <replaceStrings>
+      <replace>self._dirs</replace>
+    </replaceStrings>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -208,8 +212,8 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="-1994" />
-    <option name="y" value="-7" />
+    <option name="x" value="-48" />
+    <option name="y" value="-8" />
     <option name="width" value="1936" />
     <option name="height" value="1056" />
   </component>
@@ -336,7 +340,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1928" y="-7" width="1936" height="1056" extended-state="6" />
+    <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.13486141" />
@@ -531,18 +535,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/minimax.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1166">
-          <caret line="227" column="9" lean-forward="true" selection-start-line="157" selection-start-column="4" selection-end-line="227" selection-end-column="9" />
+        <state relative-caret-position="-322">
+          <caret line="176" column="9" lean-forward="true" selection-start-line="176" selection-start-column="9" selection-end-line="176" selection-end-column="9" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pacman-contest/myTeam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="398">
-          <caret line="360" column="29" lean-forward="true" selection-start-line="360" selection-start-column="29" selection-end-line="360" selection-end-column="29" />
+        <state relative-caret-position="254">
+          <caret line="393" column="12" selection-start-line="393" selection-start-column="12" selection-end-line="393" selection-end-column="12" />
           <folding>
-            <marker date="1539488243392" expanded="true" signature="1564:1567" ph="..." />
-            <marker date="1539488243392" expanded="true" signature="9440:9446" ph="..." />
+            <marker date="1539493387703" expanded="true" signature="1565:1568" ph="..." />
+            <marker date="1539493387703" expanded="true" signature="12724:12743" ph="..." />
+            <marker date="1539493387703" expanded="true" signature="13771:14169" ph="..." />
           </folding>
         </state>
       </provider>
