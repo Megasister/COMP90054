@@ -392,6 +392,8 @@ class AbuseAStarAgent(CaptureAgent, object):
         bounds = self._bound
         agent = agentStates[index]
         pos = agent.configuration.pos
+        scare = agent.scaredTimer > 0
+        walls = data.layout.walls.data
 
         target = None
         rs = []
@@ -418,6 +420,26 @@ class AbuseAStarAgent(CaptureAgent, object):
             ), npos, agentState.isPacman))
 
         if target is not None:
+            if scare:
+                tx, ty = target
+                sur = [
+                    (tx + cx, ty + cy) for cx, cy in self._closes
+                ]
+                sur = [
+                    (x, y) for x, y in sur if walls[x][y]
+                ]
+                sel = min(
+                    (
+                        (
+                            s,
+                            min(distancer.getDistance(s, b) for b in bounds),
+                            distancer.getDistance(pos, s)
+                        )
+                        for s in sur
+                    ),
+                    key=itemgetter(1, 2)
+                )[0]
+                return self._chase(gameState, sel)
             return self._chase(gameState, target)
 
         mb = None
@@ -434,6 +456,46 @@ class AbuseAStarAgent(CaptureAgent, object):
                     mb, mbd = b, bd
 
         if target is not None:
+            if scare:
+                tx, ty = target
+                sur = [
+                    (tx + cx, ty + cy) for cx, cy in self._closes
+                ]
+                sur = [
+                    (x, y) for x, y in sur if walls[x][y]
+                ]
+                sel = min(
+                    (
+                        (
+                            s,
+                            min(distancer.getDistance(s, b) for b in bounds),
+                            distancer.getDistance(pos, s)
+                        )
+                        for s in sur
+                    ),
+                    key=itemgetter(1, 2)
+                )[0]
+                return self._chase(gameState, sel)
             return self._chase(gameState, target)
 
+        if scare:
+            tx, ty = mb
+            sur = [
+                (tx + cx, ty + cy) for cx, cy in self._closes
+            ]
+            sur = [
+                (x, y) for x, y in sur if walls[x][y]
+            ]
+            sel = min(
+                (
+                    (
+                        s,
+                        min(distancer.getDistance(s, b) for b in bounds),
+                        distancer.getDistance(pos, s)
+                    )
+                    for s in sur
+                ),
+                key=itemgetter(1, 2)
+            )[0]
+            return self._chase(gameState, sel)
         return self._chase(gameState, mb)
