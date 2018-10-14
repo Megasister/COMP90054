@@ -13,14 +13,12 @@
 
 from __future__ import division, print_function
 
-import random
 from heapq import heappop, heappush
-from operator import add, itemgetter
+from operator import itemgetter
 
 from captureAgents import CaptureAgent
 from distanceCalculator import manhattanDistance
-from baselineTeam import DefensiveReflexAgent
-from game import Directions, Actions
+from game import Actions, Directions
 
 
 ################################################################################
@@ -94,22 +92,28 @@ class AbuseAStarAgent(CaptureAgent, object):
         width = layout.width
         half = width // 2
         red = self.red
+
+        # record the bound in our side
         bound = half - 1 if red else half
         walls = layout.walls.data
         self._bound = set(
             (bound, y) for y in xrange(height) if not walls[bound][y]
         )
 
-        self._teammate = self._instances[(self.index // 2 + 1) % 2]
-
-        walls = self._walls = layout.walls.data
+        # assume defensive agent will never reach the other side
         for x in (xrange(half, width) if self.red else xrange(half)):
             for y in xrange(height):
                 walls[x][y] = True
+        self._walls = walls
+
+        # get an instance of the teammate
+        self._teammate = self._instances[(self.index // 2 + 1) % 2]
 
     def _updateMask(self, gameState):
         agentStates = gameState.data.agentStates
         red = self.red
+
+        # determine the positions of the opponents
         poss = [
             agentStates[i].configuration.pos
             for i in (gameState.blueTeam if red else gameState.redTeam)
@@ -122,6 +126,8 @@ class AbuseAStarAgent(CaptureAgent, object):
         half = width // 2
         height = layout.height
         food = data.food
+
+        # mask the food which can be reached by opponent in three steps
         _maskFood = set()
         _leftFood = set()
         for x in (xrange(half, width) if red else xrange(half)):
@@ -133,6 +139,7 @@ class AbuseAStarAgent(CaptureAgent, object):
                     else:
                         _leftFood.add(pos)
 
+        # route needs to be recomputed if the food set changed
         if _maskFood == self._maskFood:
             self._maskUpdated = True
         else:
@@ -153,12 +160,15 @@ class AbuseAStarAgent(CaptureAgent, object):
         agentStates = data.agentStates
         distancer = self.distancer
 
+        # determine if the current path needs to be recomputed
         _recompute = self._recompute or self._maskUpdated
         walls = data.layout.walls.data
         _actions = self._actions
         for i in (gameState.blueTeam if self.red else gameState.redTeam):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
+                # pretend there are walls around the opponent agents if they are
+                # not scared
                 x, y = agentState.configuration.pos
                 pos = x, y = int(x), int(y)
                 if _actions is None or pos in _actions:
@@ -176,6 +186,8 @@ class AbuseAStarAgent(CaptureAgent, object):
             if not _actions:
                 self._recompute = True
             return Actions.vectorToDirection((nx - x, ny - y))
+
+        # TODO: change action when only masked food left
 
         # A* to eat
         path = []
@@ -423,10 +435,10 @@ class AbuseAStarAgent(CaptureAgent, object):
             if scare:
                 tx, ty = target
                 sur = [
-                    (tx + cx, ty + cy) for cx, cy in self._closes
+                    (int(tx + cx), int(ty + cy)) for cx, cy in self._closes
                 ]
                 sur = [
-                    (x, y) for x, y in sur if walls[x][y]
+                    (x, y) for x, y in sur if not walls[x][y]
                 ]
                 sel = min(
                     (
@@ -462,7 +474,7 @@ class AbuseAStarAgent(CaptureAgent, object):
                     (tx + cx, ty + cy) for cx, cy in self._closes
                 ]
                 sur = [
-                    (x, y) for x, y in sur if walls[x][y]
+                    (x, y) for x, y in sur if not walls[x][y]
                 ]
                 sel = min(
                     (
@@ -484,7 +496,7 @@ class AbuseAStarAgent(CaptureAgent, object):
                 (tx + cx, ty + cy) for cx, cy in self._closes
             ]
             sur = [
-                (x, y) for x, y in sur if walls[x][y]
+                (x, y) for x, y in sur if not walls[x][y]
             ]
             sel = min(
                 (
