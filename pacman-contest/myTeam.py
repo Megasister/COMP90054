@@ -157,7 +157,7 @@ class AbuseAStarAgent(CaptureAgent, object):
             # start to escape asap if no foods left
             if not maskFood:
                 return self._getEscapeNext(gameState)
-            # TODO: coordinate with defensive
+            # TODO: coordinate with defensive agent
             mfs = min((
                 (f, distancer.getDistance(pos, f))
                 for f in maskFood
@@ -169,7 +169,7 @@ class AbuseAStarAgent(CaptureAgent, object):
         _actions = self._actions
         _recompute = not _actions or maskFood != self._maskFood
         walls = data.layout.walls.data
-        for i in (gameState.blueTeam if self.red else gameState.redTeam):
+        for i in (gameState.blueTeam if red else gameState.redTeam):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
                 # pretend there are walls around the opponent agents if they are
@@ -233,13 +233,13 @@ class AbuseAStarAgent(CaptureAgent, object):
         is not explicitly disallowed in all documents so we decide to utilise
         this design flaw in the final submission
         """
+        # TODO: incorporate the inference module instead of abusing this flaw
         return gameState
 
     def chooseAction(self, gameState):
         """
         Choose an action based on the current status of the agent
         """
-
         return self._defenseAction(gameState) \
             if self._defense \
             else self._offenseAction(gameState)
@@ -259,7 +259,7 @@ class AbuseAStarAgent(CaptureAgent, object):
         _escapes = self._escapes
         _recompute = not _escapes
         walls = data.layout.walls.data
-        for i in (gameState.blueTeam if self.red else gameState.redTeam):
+        for i in (gameState.blueTeam if red else gameState.redTeam):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
                 # pretend there are walls around the opponent agents if they are
@@ -285,6 +285,7 @@ class AbuseAStarAgent(CaptureAgent, object):
 
         # A* to escape
         path = []
+        # escape to the nearest bound
         h = min(distancer.getDistance(pos, b) for b in bounds)
         q = [(h, h, 0, pos, path)]
         visited = set()
@@ -331,9 +332,13 @@ class AbuseAStarAgent(CaptureAgent, object):
                 self._escapes = None
                 self._actions = None
                 self._chasepath = None
+                # TODO: notify the defensive agent
                 # self._teammate._notifyReborn()
         self._prevPos = pos
 
+        # TODO: determine if has capsule beside and perform corresponding action
+
+        # if escaping, finish escaping
         if self._escapes:
             return self._getEscapeNext(gameState)
 
@@ -341,6 +346,7 @@ class AbuseAStarAgent(CaptureAgent, object):
             agentStates[i]
             for i in (gameState.blueTeam if red else gameState.redTeam)
         ]
+        # if determine to be in danger and currently carrying food, escape
         if any(
             not s.isPacman and s.scaredTimer == 0 and distancer.getDistance(
                 s.configuration.pos, pos
@@ -352,6 +358,8 @@ class AbuseAStarAgent(CaptureAgent, object):
             if nc > 0:
                 return self._getEscapeNext(gameState)
 
+        # find the closest food to eat, not necessary to be a TSP, this is just
+        # a greedy strategy to eat the current closest food
         return self._getFoodNext(gameState)
 
     def _chase(self, gameState, target):
@@ -363,15 +371,22 @@ class AbuseAStarAgent(CaptureAgent, object):
 
         dist = distancer.getDistance(pos, target)
         cp = self._chasepath
+        # determine if needs to recompute
         if cp is not None:
             movement = manhattanDistance(cp[0], target)
-            if movement < 1:
+            # insert the target into the last
+            if movement == 1:
                 cp = [target] + cp
 
-            if len(cp) <= dist:
-                nx, ny = cp.pop()
-                self._chasepath = cp if cp else None
-                return Actions.vectorToDirection((nx - x, ny - y))
+            # only follow the original route if the target didn't change
+            if movement <= 1:
+                if len(cp) <= dist:
+                    nx, ny = cp.pop()
+                    self._chasepath = cp if cp else None
+                    return Actions.vectorToDirection((nx - x, ny - y))
+
+        # reset path
+        self._chasepath = None
 
         walls = self._walls
         # A* to chase
@@ -395,6 +410,7 @@ class AbuseAStarAgent(CaptureAgent, object):
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
 
         if not path:
+            # TODO: change behaviour
             return Directions.STOP
 
         path.reverse()
@@ -422,9 +438,11 @@ class AbuseAStarAgent(CaptureAgent, object):
                 self._escapes = None
                 self._actions = None
                 self._chasepath = None
+                # TODO: notify the defensive agent
                 # self._teammate._notifyReborn()
         self._prevPos = pos
 
+        # first select the target with the highest carrying food
         target = None
         rs = []
         pnc = 0
@@ -448,7 +466,6 @@ class AbuseAStarAgent(CaptureAgent, object):
                 ),
                 key=itemgetter(1)
             ), npos, agentState.isPacman))
-
         layout = data.layout
         height, width = layout.height, layout.width
         if target is not None:
@@ -476,6 +493,8 @@ class AbuseAStarAgent(CaptureAgent, object):
                 return self._chase(gameState, sel)
             return self._chase(gameState, target)
 
+        # if no agent carries food, select the closest one which is currently a
+        # Pacman
         mb = None
         mbd = (inf, inf)
         md = inf
@@ -514,6 +533,8 @@ class AbuseAStarAgent(CaptureAgent, object):
                 return self._chase(gameState, sel)
             return self._chase(gameState, target)
 
+        # if both are still in their sides, just try to reach the closest bound
+        # they could reach
         if scare:
             tx, ty = mb
             sur = [
