@@ -187,11 +187,22 @@ class AbuseAStarAgent(CaptureAgent, object):
                 self._recompute = True
             return Actions.vectorToDirection((nx - x, ny - y))
 
-        # TODO: change action when only masked food left
+        # assign the closest food for trial
+        leftFood = self._leftFood
+        if not leftFood:
+            maskFood = self._maskFood
+            # start to escape asap if no foods left
+            if not maskFood:
+                return self._getEscapeNext(gameState)
+            mfs = min((
+                (f, distancer.getDistance(pos, f))
+                for f in maskFood
+            ), key=itemgetter(1))[0]
+            leftFood.add(mfs)
+            maskFood.remove(mfs)
 
         # A* to eat
         path = []
-        leftFood = self._leftFood
         h = min(distancer.getDistance(pos, f) for f in leftFood)
         q = [(h, h, 0, pos, path)]
         visited = set()
@@ -214,10 +225,7 @@ class AbuseAStarAgent(CaptureAgent, object):
         path.reverse()
         x, y = agent.configuration.pos
         nx, ny = path.pop()
-        if not path:
-            self._recompute = True
-        else:
-            self._recompute = False
+        self._recompute = not path
 
         self._actions = path
         return Actions.vectorToDirection((nx - x, ny - y))
@@ -225,6 +233,9 @@ class AbuseAStarAgent(CaptureAgent, object):
     def observationFunction(self, gameState):
         """
         Abuse this function to obtain a full game state from the controller
+        We actually get an inference module in the inference.py but since this
+        is not explicitly disallowed in all documents so we decide to utilise
+        this design flaw
         """
         return gameState
 
@@ -240,8 +251,10 @@ class AbuseAStarAgent(CaptureAgent, object):
     def _getEscapeNext(self, gameState):
         self._recompute = True
 
+        red = self.red
         index = self.index
         data = gameState.data
+        half = data.layout.width // 2
         agentStates = data.agentStates
         bounds = self._bound
         distancer = self.distancer
@@ -251,13 +264,18 @@ class AbuseAStarAgent(CaptureAgent, object):
         _escapes = self._escapes
         for i in (gameState.blueTeam if self.red else gameState.redTeam):
             agentState = agentStates[i]
-            if not agentState.isPacman:
+            if not agentState.isPacman and agentState.scaredTimer == 0:
+                # pretend there are walls around the opponent agents if they are
+                # not scared
                 x, y = agentState.configuration.pos
                 pos = x, y = int(x), int(y)
                 if _escapes is None or pos in _escapes:
                     _recompute = True
-                walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
-                    walls[x][y - 1] = walls[x][y] = True
+                if red and x - 1 >= half or not red and x - 1 < half:
+                    walls[x - 1][y] = True
+                if red and x + 1 >= half or not red and x + 1 < half:
+                    walls[x + 1][y] = True
+                walls[x][y + 1] = walls[x][y - 1] = walls[x][y] = True
 
         agent = agentStates[index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
@@ -294,6 +312,7 @@ class AbuseAStarAgent(CaptureAgent, object):
             # self._teammate.notifyEscFail()
             self._recompute = True
             self._escape = False
+            # TODO: return other valid action
             return Directions.STOP
 
         path.reverse()
