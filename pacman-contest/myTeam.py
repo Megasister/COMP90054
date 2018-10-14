@@ -467,6 +467,8 @@ class AbuseAStarAgent(CaptureAgent, object):
                 key=itemgetter(1)
             ), npos, agentState.isPacman))
 
+        layout = data.layout
+        height, width = layout.height, layout.width
         if target is not None:
             if scare:
                 tx, ty = target
@@ -474,7 +476,9 @@ class AbuseAStarAgent(CaptureAgent, object):
                     (int(tx + cx), int(ty + cy)) for cx, cy in self._closes
                 ]
                 sur = [
-                    (x, y) for x, y in sur if not walls[x][y]
+                    (x, y)
+                    for x, y in sur
+                    if 0 <= x < width and 0 <= y < height and not walls[x][y]
                 ]
                 sel = min(
                     (
@@ -510,7 +514,9 @@ class AbuseAStarAgent(CaptureAgent, object):
                     (int(tx + cx), int(ty + cy)) for cx, cy in self._closes
                 ]
                 sur = [
-                    (x, y) for x, y in sur if not walls[x][y]
+                    (x, y)
+                    for x, y in sur
+                    if 0 <= x < width and 0 <= y < height and not walls[x][y]
                 ]
                 sel = min(
                     (
@@ -532,7 +538,9 @@ class AbuseAStarAgent(CaptureAgent, object):
                 (int(tx + cx), int(ty + cy)) for cx, cy in self._closes
             ]
             sur = [
-                (x, y) for x, y in sur if not walls[x][y]
+                (x, y)
+                for x, y in sur
+                if 0 <= x < width and 0 <= y < height and not walls[x][y]
             ]
             sel = min(
                 (
