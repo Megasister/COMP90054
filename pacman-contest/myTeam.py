@@ -72,11 +72,12 @@ class AbuseAStarAgent(CaptureAgent, object):
             self._actions = self._escapes = self._teammate = \
             self._prevPos = self._chasepath = None
         self._prevCarry = 0
-        self._chasing = self._maskUpdated = self._recompute = \
-            self._escape = False
+        self._maskUpdated = self._recompute = self._escape = False
 
         self._maskFood = set()
         self._leftFood = set()
+
+        self._walls = None
 
         # record each instance created
         self._instances[index // 2] = self
@@ -100,6 +101,11 @@ class AbuseAStarAgent(CaptureAgent, object):
         )
 
         self._teammate = self._instances[(self.index // 2 + 1) % 2]
+
+        walls = self._walls = layout.walls.data
+        for x in (xrange(half, width) if self.red else xrange(half)):
+            for y in xrange(height):
+                walls[x][y] = True
 
     def _updateMask(self, gameState):
         agentStates = gameState.data.agentStates
@@ -328,37 +334,25 @@ class AbuseAStarAgent(CaptureAgent, object):
         return self._updateMask(gameState)._getFoodNext(gameState)
 
     def _chase(self, gameState, target):
-        data = gameState.data
-        layout = data.layout
-        agentStates = data.agentStates
-        agent = agentStates[self.index]
+        target = tuple(map(int, target))
+
+        agent = gameState.data.agentStates[self.index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
-        _target = agentStates[target]
-        tpos = _target.configuration.pos
         distancer = self.distancer
 
-        dist = distancer.getDistance(pos, tpos)
+        dist = distancer.getDistance(pos, target)
         cp = self._chasepath
-        if self._chasing:
-            movement = manhattanDistance(cp[0], tpos)
+        if cp is not None:
+            movement = manhattanDistance(cp[0], target)
             if movement < 1:
-                cp = [tpos] + cp
-            elif movement > 1:
-                self._chasing = False
+                cp = [target] + cp
 
-        if self._chasing:
             if len(cp) <= dist:
                 nx, ny = cp.pop()
-                self._chasepath = cp
+                self._chasepath = cp if cp else None
                 return Actions.vectorToDirection((nx - x, ny - y))
 
-        walls = layout.walls.data
-        height, width = layout.height, layout.width
-        half = width // 2
-        for x in (xrange(half, width) if self.red else xrange(half)):
-            for y in xrange(height):
-                walls[x][y] = True
-
+        walls = self._walls
         # A* to chase
         path = []
         q = [(dist, dist, 0, pos, path)]
@@ -366,7 +360,7 @@ class AbuseAStarAgent(CaptureAgent, object):
         while q:
             _, _, g, pos, path = heappop(q)
 
-            if pos == tpos:
+            if pos == target:
                 break
 
             visited.add(pos)
@@ -375,66 +369,18 @@ class AbuseAStarAgent(CaptureAgent, object):
             for dx, dy in self._dirs:
                 npos = nx, ny = x + dx, y + dy
                 if not walls[nx][ny] and npos not in visited:
-                    h = distancer.getDistance(pos, tpos)
+                    h = distancer.getDistance(pos, target)
                     ng = g + 1
                     heappush(q, (ng + h, h, ng, npos, path + [npos]))
+
+        if not path:
+            return Directions.STOP
 
         path.reverse()
         x, y = agent.configuration.pos
         nx, ny = path.pop()
-        if not path:
-            self._chasing = False
-        else:
-            self._chasing = True
 
-        self._chasepath = path
-        return Actions.vectorToDirection((nx - x, ny - y))
-
-    def _chaseBound(self, gameState, target):
-        pass
-
-    def _scareChase(self, gameState, target):
-        data = gameState.data
-        layout = data.layout
-        agentStates = data.agentStates
-        agent = agentStates[self.index]
-        x, y = pos = agent.configuration.pos
-        _target = agentStates[target]
-        tx, ty = tpos = _target.configuration.pos
-        distancer = self.distancer
-
-        walls = layout.walls.data
-        height, width = layout.height, layout.width
-        half = width // 2
-        for x in (xrange(half, width) if self.red else xrange(half)):
-            for y in xrange(height):
-                walls[x][y] = True
-
-        dist = distancer.getDistance(pos, tpos)
-        dests = set((tx + cx, ty + cy) for cx, cy in self._closes)
-
-        # A* to chase
-        path = []
-        q = [(dist, dist, 0, pos, path)]
-        visited = set()
-        while q:
-            _, _, g, pos, path = heappop(q)
-
-            if pos in dests:
-                break
-
-            visited.add(pos)
-
-            x, y = pos
-            for dx, dy in self._dirs:
-                npos = nx, ny = x + dx, y + dy
-                if not walls[nx][ny] and npos not in visited:
-                    h = distancer.getDistance(pos, tpos)
-                    ng = g + 1
-                    heappush(q, (ng + h, h, ng, npos, path + [npos]))
-
-        x, y = agent.configuration.pos
-        nx, ny = path[0]
+        self._chasepath = path if path else None
         return Actions.vectorToDirection((nx - x, ny - y))
 
     def _defenseAction(self, gameState):
@@ -442,34 +388,52 @@ class AbuseAStarAgent(CaptureAgent, object):
         red = self.red
         data = gameState.data
         agentStates = data.agentStates
+        distancer = self.distancer
+        bounds = self._bound
         agent = agentStates[index]
         pos = agent.configuration.pos
-        distancer = self.distancer
 
-        nt = 0
-        t = None
+        target = None
+        rs = []
         pnc = 0
-        target = []
         for i in (gameState.blueTeam if red else gameState.redTeam):
             agentState = agentStates[i]
             nc = agentState.numCarrying
-            if nc > 0:
-                nt += 1
-                if nc > pnc:
-                    pnc = nc
-                    t = i
-            target.append((i, agentState))
-
-        if nt == 0:
-            t = min((
+            npos = agentState.configuration.pos
+            if nc > pnc:
+                pnc = nc
+                target = agentState.configuration.pos
+            rs.append((min(
                 (
-                    i,
-                    -a.isPacman,
-                    distancer.getDistance(pos, a.configuration.pos)
-                )
-                for i, a in target
-            ), key=itemgetter(1, 2))[0]
+                    (
+                        b,
+                        (
+                            distancer.getDistance(npos, b),
+                            distancer.getDistance(pos, b)
+                        )
+                    )
+                    for b in bounds
+                ),
+                key=itemgetter(1)
+            ), npos, agentState.isPacman))
 
-        if agent.scaredTimer > 0:
-            return self._scareChase(gameState, t)
-        return self._chase(gameState, t)
+        if target is not None:
+            return self._chase(gameState, target)
+
+        mb = None
+        mbd = (inf, inf)
+        md = inf
+        for (b, bd), npos, pac in rs:
+            dist = distancer.getDistance(npos, pos)
+            if pac:
+                if dist < md:
+                    target = npos
+                    md = dist
+            else:
+                if bd < mbd:
+                    mb, mbd = b, bd
+
+        if target is not None:
+            return self._chase(gameState, target)
+
+        return self._chase(gameState, mb)
