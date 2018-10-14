@@ -68,12 +68,9 @@ class AbuseAStarAgent(CaptureAgent, object):
         self._defense = defense
         self._height = self._width = self._half = self._bound = \
             self._actions = self._escapes = self._teammate = \
-            self._prevPos = self._chasepath = None
+            self._prevPos = self._chasepath = self._maskFood = \
+            self._leftFood = None
         self._prevCarry = 0
-        self._maskUpdated = self._recompute = self._escape = False
-
-        self._maskFood = set()
-        self._leftFood = set()
 
         self._walls = None
 
@@ -109,7 +106,9 @@ class AbuseAStarAgent(CaptureAgent, object):
         # get an instance of the teammate
         self._teammate = self._instances[(self.index // 2 + 1) % 2]
 
-    def _updateMask(self, gameState):
+    def _getFoodNext(self, gameState):
+        self._escapes = None
+
         agentStates = gameState.data.agentStates
         red = self.red
 
@@ -131,50 +130,52 @@ class AbuseAStarAgent(CaptureAgent, object):
         width = layout.width
         half = width // 2
         height = layout.height
-        food = data.food
+        food = data.food.data
 
         # mask the food which can be reached by opponent in three steps
-        _maskFood = set()
-        _leftFood = set()
+        maskFood = set()
+        leftFood = set()
         for x in (xrange(half, width) if red else xrange(half)):
             for y in xrange(height):
                 if food[x][y]:
                     pos = x, y
                     if any(distancer.getDistance(pos, p) < 6 for p in poss):
-                        _maskFood.add(pos)
+                        maskFood.add(pos)
                     else:
-                        _leftFood.add(pos)
+                        leftFood.add(pos)
 
-        # route needs to be recomputed if the food set changed
-        self._maskUpdated = _maskFood != self._maskFood
-
-        self._maskFood = _maskFood
-        self._leftFood = _leftFood
-
-        return self
-
-    def _getFoodNext(self, gameState):
-        self._escape = False
+        self._maskFood = maskFood
+        self._leftFood = leftFood
 
         index = self.index
-        red = self.red
-        data = gameState.data
-        half = data.layout.width // 2
-        agentStates = data.agentStates
-        distancer = self.distancer
+
+        agent = agentStates[index]
+        pos = tuple(map(int, agent.configuration.pos))
+
+        # assign the closest food for trial
+        if not leftFood:
+            # start to escape asap if no foods left
+            if not maskFood:
+                return self._getEscapeNext(gameState)
+            # TODO: coordinate with defensive
+            mfs = min((
+                (f, distancer.getDistance(pos, f))
+                for f in maskFood
+            ), key=itemgetter(1))[0]
+            leftFood.add(mfs)
+            maskFood.remove(mfs)
 
         # determine if the current path needs to be recomputed
-        _recompute = self._recompute or self._maskUpdated
-        walls = data.layout.walls.data
         _actions = self._actions
+        _recompute = not _actions or maskFood != self._maskFood
+        walls = data.layout.walls.data
         for i in (gameState.blueTeam if self.red else gameState.redTeam):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
                 # pretend there are walls around the opponent agents if they are
                 # not scared ghost
-                x, y = agentState.configuration.pos
-                pos = x, y = int(x), int(y)
-                if _actions is None or pos in _actions:
+                x, y = pos = tuple(map(int, agentState.configuration.pos))
+                if not _actions or pos in _actions:
                     _recompute = True
                 nx = x - 1
                 if red and nx >= half or not red and nx < half:
@@ -184,27 +185,13 @@ class AbuseAStarAgent(CaptureAgent, object):
                     walls[nx][y] = True
                 walls[x][y + 1] = walls[x][y - 1] = walls[x][y] = True
 
-        agent = agentStates[index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
         if not _recompute:
             nx, ny = _actions.pop()
-            if not _actions:
-                self._recompute = True
             return Actions.vectorToDirection((nx - x, ny - y))
 
-        # assign the closest food for trial
-        leftFood = self._leftFood
-        if not leftFood:
-            maskFood = self._maskFood
-            # start to escape asap if no foods left
-            if not maskFood:
-                return self._getEscapeNext(gameState)
-            mfs = min((
-                (f, distancer.getDistance(pos, f))
-                for f in maskFood
-            ), key=itemgetter(1))[0]
-            leftFood.add(mfs)
-            maskFood.remove(mfs)
+        # reset path
+        self._actions = None
 
         # A* to eat
         path = []
@@ -234,9 +221,9 @@ class AbuseAStarAgent(CaptureAgent, object):
         path.reverse()
         x, y = agent.configuration.pos
         nx, ny = path.pop()
-        self._recompute = not path
 
-        self._actions = path
+        if path:
+            self._actions = path
         return Actions.vectorToDirection((nx - x, ny - y))
 
     def observationFunction(self, gameState):
@@ -258,7 +245,7 @@ class AbuseAStarAgent(CaptureAgent, object):
             else self._offenseAction(gameState)
 
     def _getEscapeNext(self, gameState):
-        self._recompute = True
+        self._actions = None
 
         red = self.red
         index = self.index
@@ -269,9 +256,9 @@ class AbuseAStarAgent(CaptureAgent, object):
         distancer = self.distancer
 
         # determine if the escape path need to be recomputed
-        _recompute = not self._escape
-        walls = data.layout.walls.data
         _escapes = self._escapes
+        _recompute = not _escapes
+        walls = data.layout.walls.data
         for i in (gameState.blueTeam if self.red else gameState.redTeam):
             agentState = agentStates[i]
             if not agentState.isPacman and agentState.scaredTimer == 0:
@@ -279,7 +266,7 @@ class AbuseAStarAgent(CaptureAgent, object):
                 # not scared ghost
                 x, y = agentState.configuration.pos
                 pos = x, y = int(x), int(y)
-                if _escapes is None or pos in _escapes:
+                if not _escapes or pos in _escapes:
                     _recompute = True
                 if red and x - 1 >= half or not red and x - 1 < half:
                     walls[x - 1][y] = True
@@ -291,9 +278,10 @@ class AbuseAStarAgent(CaptureAgent, object):
         x, y = pos = tuple(map(int, agent.configuration.pos))
         if not _recompute:
             nx, ny = _escapes.pop()
-            if not _escapes:
-                self._escape = False
             return Actions.vectorToDirection((nx - x, ny - y))
+
+        # reset path
+        self._escapes = None
 
         # A* to escape
         path = []
@@ -304,7 +292,6 @@ class AbuseAStarAgent(CaptureAgent, object):
             _, _, g, pos, path = heappop(q)
 
             if pos in bounds:
-                escaped = True
                 break
 
             visited.add(pos)
@@ -324,12 +311,9 @@ class AbuseAStarAgent(CaptureAgent, object):
         path.reverse()
         x, y = agent.configuration.pos
         nx, ny = path.pop()
-        if not path:
-            self._escape = False
-        else:
-            self._escape = True
 
-        self._escapes = path
+        if path:
+            self._escapes = path
         return Actions.vectorToDirection((nx - x, ny - y))
 
     def _offenseAction(self, gameState):
@@ -344,13 +328,13 @@ class AbuseAStarAgent(CaptureAgent, object):
         _prevPos = self._prevPos
         if _prevPos is not None:
             if manhattanDistance(pos, _prevPos) > 1:
-                self._escape = False
-                self._recompute = True
+                self._escapes = None
+                self._actions = None
                 self._chasepath = None
                 # self._teammate._notifyReborn()
         self._prevPos = pos
 
-        if self._escape:
+        if self._escapes:
             return self._getEscapeNext(gameState)
 
         states = [
@@ -363,12 +347,12 @@ class AbuseAStarAgent(CaptureAgent, object):
             ) < 4
             for s in states
         ):
-            self._recompute = True
+            self._actions = None
             nc = self._prevCarry = agentState.numCarrying
             if nc > 0:
                 return self._getEscapeNext(gameState)
 
-        return self._updateMask(gameState)._getFoodNext(gameState)
+        return self._getFoodNext(gameState)
 
     def _chase(self, gameState, target):
         target = tuple(map(int, target))
@@ -435,8 +419,8 @@ class AbuseAStarAgent(CaptureAgent, object):
         _prevPos = self._prevPos
         if _prevPos is not None:
             if manhattanDistance(pos, _prevPos) > 1:
-                self._escape = False
-                self._recompute = True
+                self._escapes = None
+                self._actions = None
                 self._chasepath = None
                 # self._teammate._notifyReborn()
         self._prevPos = pos
