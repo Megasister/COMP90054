@@ -36,12 +36,12 @@ def createTeam(
     firstIndex,
     secondIndex,
     isRed,
-    first='AbuseMonteCarloAgent',
+    first='AbuseAStarAgent',
     second='DefensiveReflexAgent',
 ):
     return [
         eval(first)(firstIndex, isRed, False),
-        eval(second)(secondIndex, isRed, True)
+        eval(second)(secondIndex, isRed)
     ]
 
 
@@ -54,7 +54,6 @@ class AbuseAStarAgent(CaptureAgent, object):
     predefined circumstances, mainly use A* as the strategy to indicate the
     next step
     """
-    __slots__ = ()
 
     _instances = [None, None]
 
@@ -67,11 +66,10 @@ class AbuseAStarAgent(CaptureAgent, object):
         self._height = self._width = self._half = self._bound = \
             self._actions = self._escapes = None
         self._prevCarry = 0
-        self._recompute = False
-        self._escape = False
+        self._maskUpdated = self._recompute = self._escape = False
 
-        self._mask_food = set()
-        self._left_food = set()
+        self._maskFood = set()
+        self._leftFood = set()
 
         # record each instance created
         self._instances[index // 2] = self
@@ -84,9 +82,9 @@ class AbuseAStarAgent(CaptureAgent, object):
 
         data = gameState.data
         layout = data.layout
-        height = self._height = layout.height
-        width = self._width = layout.width
-        self._half = half = width // 2
+        height = layout.height
+        width = layout.width
+        half = width // 2
         red = self.red
         bound = half - 1 if red else half
         walls = layout.walls.data
@@ -94,124 +92,105 @@ class AbuseAStarAgent(CaptureAgent, object):
             (bound, y) for y in xrange(height) if not walls[bound][y]
         )
 
-        agentStates = data.agentStates
+    def _updateMask(self, gameState):
+        agentStates = gameState.data.agentStates
+        red = self.red
         poss = [
             agentStates[i].configuration.pos
             for i in (gameState.blueTeam if red else gameState.redTeam)
         ]
+
         distancer = self.distancer
-        food = layout.food.data
+        data = gameState.data
+        layout = data.layout
+        width = layout.width
+        half = width // 2
+        height = layout.height
+        food = data.food
+        _maskFood = set()
+        _leftFood = set()
         for x in (xrange(half, width) if red else xrange(half)):
             for y in xrange(height):
                 if food[x][y]:
                     pos = x, y
                     if any(distancer.getDistance(pos, p) < 6 for p in poss):
-                        self._mask_food.add(pos)
+                        _maskFood.add(pos)
                     else:
-                        self._left_food.add(pos)
+                        _leftFood.add(pos)
 
-        # only offensive agent needs to compute the route
-        if not self._defense:
-            self._computeFoodRoute(gameState)
+        if _maskFood == self._maskFood:
+            self._maskUpdated = True
+        else:
+            self._maskUpdated = False
 
-    def _computeFoodRoute(self, gameState):
-        if not self._updateMask and not self._recomputeFR:
-            return self
-
-        data = gameState.data
-        bounds = self._bound
-        distancer = self.distancer
-
-        # Dijkstra (or variant of Uniform Cost Search) implementation
-        pos = data.agentStates[self.index].configuration.pos
-        path = []
-        q = [(0, pos, path, self._left_food)]
-        while q:
-            dist, pos, path, fs = heappop(q)
-
-            if pos in bounds and not fs:
-                break
-
-            if fs:
-                npos, ndist = min(
-                    ((np, dist + distancer.getDistance(pos, np)) for np in fs),
-                    key=itemgetter(1)
-                )
-
-                nfs = fs.copy()
-                nfs.remove(npos)
-                heappush(q, (ndist, npos, path + [npos], nfs))
-            else:
-                npos, ndist = min(
-                    (
-                        (np, dist + distancer.getDistance(pos, np))
-                        for np in bounds
-                    ),
-                    key=itemgetter(1)
-                )
-                heappush(q, (ndist, npos, path + [npos], None))
-        # reverse the path to utilise the efficiency of list.pop
-        path.reverse()
-
-        self._actions = path
-
-        return self
-
-    def _monitorMask(self, gameState):
-        agentStates = gameState.data.agentStates
-        poss = [
-            agentStates[i].configuration.pos
-            for i in (gameState.blueTeam if red else gameState.redTeam)
-        ]
-
-        distancer = self.distancer
-        added = set()
-        for f in self._mask_food:
-            if all(distancer.getDistance(f, p) > 5 for p in poss):
-                added.add(f)
-
-        deleted = set()
-        for f in self._left_food:
-            if any(distancer.getDistance(f, p) < 6 for p in poss):
-                deleted.add(f)
-
-        if added:
-            self._mask_food -= added
-            self._left_food |= added
-            self._updateMask = True
-
-        if deleted:
-            self._mask_food |= deleted
-            self._left_food -= deleted
-            self._updateMask = True
+        self._maskFood = _maskFood
+        self._leftFood = _leftFood
 
         return self
 
     def _getFoodNext(self, gameState):
+        self._escape = False
+        print("prev eat:", not self._recompute)
+
         index = self.index
-        agentState = gameState.data.agentStates[index]
+        data = gameState.data
+        agentStates = data.agentStates
         distancer = self.distancer
-        actions = self._actions
-        if agentState.configuration.pos == actions[-1]:
-            actions.pop()
-        cdest = actions[-1]
-        successors = [
-            (a, gameState.generateSuccessor(index, a))
-            for a in gameState.getLegalActions(index)
-        ]
-        return min(
-            (
-                (
-                    a,
-                    distancer.getDistance(
-                        succ.data.agentStates[index].configuration.pos, cdest
-                    ),
-                    len(succ.getLegalActions(index))
-                )
-                for a, succ in successors
-            ),
-            key=itemgetter(1, 2)
-        )[0]
+
+        _recompute = self._recompute or self._maskUpdated
+        walls = data.layout.walls.data
+        _actions = self._actions
+        if not _recompute:
+            for i in (gameState.blueTeam if self.red else gameState.redTeam):
+                agentState = agentStates[i]
+                if not agentState.isPacman:
+                    x, y = agentState.configuration.pos
+                    pos = x, y = int(x), int(y)
+                    if _actions is None or pos in _actions:
+                        _recompute = True
+                    walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
+                        walls[x][y - 1] = walls[x][y] = True
+
+        agent = agentStates[index]
+        x, y = pos = tuple(map(int, agent.configuration.pos))
+        if not _recompute:
+            nx, ny = _actions.pop()
+            if not _actions:
+                self._recompute = True
+            return Actions.vectorToDirection((nx - x, ny - y))
+
+        # A* to escape
+        path = []
+        leftFood = self._leftFood
+        h = min(distancer.getDistance(pos, f) for f in leftFood)
+        q = [(h, h, 0, pos, path)]
+        visited = set()
+        while q:
+            _, _, g, pos, path = heappop(q)
+
+            if pos in leftFood:
+                break
+
+            visited.add(pos)
+
+            x, y = pos
+            for dx, dy in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+                npos = nx, ny = x + dx, y + dy
+                if not walls[nx][ny] and npos not in visited:
+                    h = min(distancer.getDistance(npos, f) for f in leftFood)
+                    ng = g + 1
+                    heappush(q, (ng + h, h, ng, npos, path + [npos]))
+
+        path.reverse()
+        x, y = agent.configuration.pos
+        nx, ny = path.pop()
+        if not path:
+            self._recompute = True
+        else:
+            self._recompute = False
+
+        self._actions = path
+        return Actions.vectorToDirection((nx - x, ny - y))
 
     def observationFunction(self, gameState):
         """
@@ -229,30 +208,35 @@ class AbuseAStarAgent(CaptureAgent, object):
             else self._offenseAction(gameState)
 
     def _getEscapeNext(self, gameState):
+        self._recompute = True
+        print("prev escape:", self._escape)
+
         index = self.index
         data = gameState.data
         agentStates = data.agentStates
         bounds = self._bound
         distancer = self.distancer
 
-        _recompute = self._recomputeER
+        _recompute = not self._escape
+        walls = data.layout.walls.data
+        _escapes = self._escapes
         if not _recompute:
-            walls = data.layout.walls.data
             for i in (gameState.blueTeam if self.red else gameState.redTeam):
                 agentState = agentStates[i]
                 if not agentState.isPacman:
                     x, y = agentState.configuration.pos
                     pos = x, y = int(x), int(y)
-                    if pos in self._escapes:
+                    if _escapes is None or pos in _escapes:
                         _recompute = True
-                        break
                     walls[x + 1][y] = walls[x][y + 1] = walls[x - 1][y] = \
                         walls[x][y - 1] = walls[x][y] = True
 
         agent = agentStates[index]
         x, y = pos = tuple(map(int, agent.configuration.pos))
         if not _recompute:
-            nx, ny = self._escapes.pop()
+            nx, ny = _escapes.pop()
+            if not _escapes:
+                self._escape = False
             return Actions.vectorToDirection((nx - x, ny - y))
 
         # A* to escape
@@ -289,7 +273,10 @@ class AbuseAStarAgent(CaptureAgent, object):
         nx, ny = path.pop()
         if not path:
             self._escape = False
+        else:
+            self._escape = True
 
+        self._escapes = path
         return Actions.vectorToDirection((nx - x, ny - y))
 
     def _offenseAction(self, gameState):
@@ -310,7 +297,7 @@ class AbuseAStarAgent(CaptureAgent, object):
         if any(
             not s.isPacman and s.scaredTimer == 0 and distancer.getDistance(
                 s.configuration.pos, pos
-            ) < 6
+            ) < 4
             for s in states
         ):
             self._recompute = True
@@ -319,6 +306,4 @@ class AbuseAStarAgent(CaptureAgent, object):
                 self._escape = True
                 return self._getEscapeNext(gameState)
 
-        return self._monitorMask(gameState)._computeFoodRoute(
-            gameState
-        )._getFoodNext(gameState)
+        return self._updateMask(gameState)._getFoodNext(gameState)
